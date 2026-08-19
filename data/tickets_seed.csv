@@ -1,0 +1,11 @@
+customer_id,agent_id,category_id,subject,description,status,priority,language
+1,1,1,Cannot login to my account,I am unable to login. It says invalid credentials even though my password is correct.,resolved,high,en
+2,2,1,Contraseña olvidada,Olvidé mi contraseña y no puedo restablecer. El enlace de restablecimiento no funciona.,resolved,medium,es
+3,1,2,Billing overcharge on invoice,I was charged twice for my monthly subscription. Please refund the extra amount.,resolved,high,en
+4,3,2,Rechnung falsch,Meine letzte Rechnung enthält einen falschen Betrag. Bitte korrigieren Sie das.,open,medium,de
+5,2,3,App crashes on startup,The mobile app crashes immediately after opening. I have tried reinstalling.,resolved,critical,en
+6,1,3,アプリが起動しない,アプリを開くとすぐにクラッシュします。再インストールしても解決しません。,resolved,high,ja
+7,3,1,Impossible de se connecter,Je ne peux pas me connecter à mon compte. Le mot de passe est correct mais j'obtiens une erreur.,open,medium,fr
+8,2,2,Pagamento duplicado,Fui cobrado duas vezes na minha última fatura. Preciso de reembolso.,resolved,high,pt
+9,1,3,Software update failed,The latest software update fails at 90% with an unknown error code.,open,high,en
+10,3,1,Сброс пароля не работает,Я запросил сброс пароля но письмо не приходит на мою почту.,open,medium,ru
