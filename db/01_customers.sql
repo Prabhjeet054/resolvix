@@ -1,8 +1,11 @@
--- Create the customers table
+-- Create the customers table.
 CREATE TABLE customers (
-    customer_id   NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    full_name     VARCHAR2(200)  NOT NULL,
-    email         VARCHAR2(200)  NOT NULL UNIQUE,
-    preferred_lang VARCHAR2(10) DEFAULT 'en',
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    customer_id   NUMBER,
+    customer_name VARCHAR2(150) NOT NULL,
+    email         VARCHAR2(150) NOT NULL,
+    phone         VARCHAR2(20),
+    region        VARCHAR2(50),
+    created_at    TIMESTAMP DEFAULT SYSTIMESTAMP,
+    CONSTRAINT pk_customers PRIMARY KEY (customer_id),
+    CONSTRAINT uq_customers_email UNIQUE (email)
 );

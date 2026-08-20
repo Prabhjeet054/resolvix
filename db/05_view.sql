@@ -10,9 +10,9 @@ SELECT
     t.metadata,
     t.created_at,
     t.resolved_at,
-    c.full_name   AS customer_name,
+    c.customer_name AS customer_name,
     c.email       AS customer_email,
-    a.full_name   AS agent_name,
+    a.agent_name  AS agent_name,
     cat.category_name
 FROM tickets t
 LEFT JOIN customers  c   ON t.customer_id  = c.customer_id
