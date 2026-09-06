@@ -8,9 +8,10 @@ in the project report as a SQL-injection-safe pattern.
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
+
+import oracledb
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -97,6 +98,16 @@ def seed_reference_data() -> None:
             f"{len(AGENTS)} agents, "
             f"{len(CATEGORIES)} categories."
         )
+    except oracledb.IntegrityError as exc:
+        if conn is not None:
+            conn.rollback()
+        error_obj, = exc.args
+        print(
+            "Seed failed cleanly due to unique-constraint violation "
+            f"(ORA-{error_obj.code}): {error_obj.message}"
+        )
+        print("Rolled back entire transaction; no duplicate rows were inserted.")
+        raise SystemExit(1) from None
     except Exception as exc:
         if conn is not None:
             conn.rollback()
