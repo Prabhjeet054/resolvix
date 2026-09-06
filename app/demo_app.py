@@ -1,7 +1,6 @@
 """
-Resolvix — Premium Multilingual Support Ticket Assistant UI.
-Phase 1 Working PoC Prototype with Enhanced Aesthetics,
-Quick Demo Scenarios, and Real-Time Vector Similarity.
+Resolvix — Multilingual Support Ticket Assistant UI.
+Phase 1 Working Prototype (In-Memory Semantic Search).
 """
 
 from __future__ import annotations
@@ -22,183 +21,34 @@ from embeddings.generate import generate_embedding, get_model
 CSV_PATH = PROJECT_ROOT / "data" / "tickets_seed.csv"
 
 st.set_page_config(
-    page_title="Resolvix — AI Multilingual Support Ticket Assistant",
-    page_icon="⚡",
+    page_title="Multilingual Support Ticket Assistant",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# Premium Custom CSS Injection
+# Clean, balanced typography without custom clutter
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
-    html, body, [class*="css"] {
-        font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-
-    /* Hide default Streamlit sidebar and toggle permanently */
+    /* Hide sidebar and toggle */
     [data-testid="stSidebar"], [data-testid="collapsedControl"] {
         display: none !important;
     }
 
-    /* Main container max width and padding */
+    /* Keep container comfortably centered so screen does not feel stretched or empty */
     .block-container {
-        max-width: 1160px;
+        max-width: 1200px;
         padding-top: 2rem;
-        padding-bottom: 3.5rem;
+        padding-bottom: 3rem;
     }
 
-    /* Hero Header Styling */
-    .hero-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(168, 85, 247, 0.12));
-        color: #4f46e5;
-        border: 1px solid rgba(99, 102, 241, 0.25);
-        padding: 5px 14px;
-        border-radius: 9999px;
-        font-size: 0.8rem;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        margin-bottom: 0.8rem;
-    }
-
-    .hero-title {
-        font-size: 2.3rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.4rem;
-        letter-spacing: -0.02em;
-    }
-
-    .hero-subtitle {
-        color: #64748b;
-        font-size: 1.05rem;
-        font-weight: 400;
-        margin-bottom: 1.5rem;
-        line-height: 1.5;
-    }
-
-    /* Stat Cards */
-    .stat-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 1rem 1.2rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-        text-align: center;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-    }
-    .stat-value {
-        font-size: 1.45rem;
-        font-weight: 800;
-        color: #0f172a;
-    }
-    .stat-label {
-        font-size: 0.75rem;
-        color: #64748b;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-top: 2px;
-    }
-
-    /* Result Card Enhancement */
-    .result-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin-bottom: 1.3rem;
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
-        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .result-card:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.09);
-    }
-
-    .badge-pill {
-        display: inline-block;
-        padding: 3px 10px;
-        border-radius: 6px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.3px;
-        margin-right: 6px;
-    }
-    .badge-lang {
-        background: #f1f5f9;
-        color: #334155;
-        border: 1px solid #cbd5e1;
-    }
-    .badge-cat {
-        background: #ede9fe;
-        color: #6d28d9;
-        border: 1px solid #ddd6fe;
-    }
-    .badge-score {
-        background: #dcfce7;
-        color: #15803d;
-        border: 1px solid #bbf7d0;
-        font-weight: 800;
-        font-size: 0.82rem;
-    }
-
-    .solution-box {
-        background: #f0fdf4;
-        border: 1px solid #bbf7d0;
+    /* Clean resolution box */
+    .resolution-card {
+        background-color: #f0fdf4;
         border-left: 4px solid #16a34a;
-        padding: 1rem 1.1rem;
-        border-radius: 8px;
-        margin-top: 0.9rem;
-    }
-    .solution-title {
-        color: #15803d;
-        font-weight: 700;
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 4px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .solution-text {
-        color: #166534;
-        font-size: 0.95rem;
-        line-height: 1.5;
-        font-weight: 500;
-    }
-
-    /* Text area and button polish */
-    .stTextArea textarea {
-        border-radius: 12px !important;
-        border: 1.5px solid #cbd5e1 !important;
-        font-size: 0.95rem !important;
-        transition: border-color 0.2s ease !important;
-    }
-    .stTextArea textarea:focus {
-        border-color: #4f46e5 !important;
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
-    }
-    .stButton button {
-        border-radius: 10px !important;
-        font-weight: 700 !important;
-        padding: 0.6rem 1.8rem !important;
-        font-size: 0.95rem !important;
-        letter-spacing: 0.3px !important;
-        transition: all 0.2s ease !important;
+        padding: 12px 16px;
+        border-radius: 4px;
+        margin-top: 10px;
     }
     </style>
     """,
@@ -262,121 +112,133 @@ def find_similar_in_memory(query_vec: np.ndarray, tickets: list[dict], top_n: in
 
 
 def main() -> None:
-    # Warm model & index seed dataset
-    with st.spinner("Initializing multilingual vector engine..."):
+    st.title("Multilingual Support Ticket Assistant")
+    st.caption(
+        "Semantic similarity search powered by sentence-transformers (paraphrase-multilingual-MiniLM-L12-v2, 384 dimensions). "
+        "Finds previously resolved tickets matching a new query across English, Hindi, and Tamil."
+    )
+
+    with st.spinner("Loading multilingual embedding model..."):
         model = load_embedding_model()
         tickets = load_seed_tickets_with_embeddings()
 
-    # Hero Header Section
-    st.markdown(
-        """
-        <div class="hero-badge">⚡ Resolvix AI · Multilingual Resolution Engine</div>
-        <div class="hero-title">Support Ticket Similarity Assistant</div>
-        <div class="hero-subtitle">
-            Instantly surface previously verified solutions using multilingual vector embeddings.
-            Supports queries in <b>English, Hindi, and Tamil</b> with zero translation overhead.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.divider()
 
-    # Initialize Session State for Quick Demo Scenarios
-    if "query_input" not in st.session_state:
-        st.session_state["query_input"] = ""
+    # Session State for inputs
+    if "selected_query" not in st.session_state:
+        st.session_state["selected_query"] = ""
 
-    # Quick Demo Clickable Chips (Ideal for Live Reviews!)
-    st.markdown("<p style='font-size: 0.85rem; font-weight: 700; color: #475569; margin-bottom: 6px;'>💡 QUICK DEMO SCENARIOS (CLICK TO TEST):</p>", unsafe_allow_html=True)
-    c1, c2, c3, c4 = st.columns(4)
+    # Two-column balanced layout (Input on Left, Results on Right)
+    col_left, col_right = st.columns([1, 1.4], gap="large")
 
-    with c1:
-        if st.button("🇮🇳 Hindi Login Issue", use_container_width=True):
-            st.session_state["query_input"] = "मेरा पासवर्ड रीसेट नहीं हो रहा, लिंक एक्सपायर हो जाता है"
-            st.rerun()
+    with col_left:
+        st.subheader("New Ticket Query")
 
-    with c2:
-        if st.button("🇬🇧 English Double Billing", use_container_width=True):
-            st.session_state["query_input"] = "I was charged twice for my monthly subscription on the same invoice"
-            st.rerun()
+        # Clean preset dropdown (no emojis)
+        preset_choice = st.selectbox(
+            "Load sample query:",
+            options=[
+                "— Custom input (type below) —",
+                "Hindi: Password reset link expired (Login)",
+                "English: Billed twice on monthly subscription (Billing)",
+                "Tamil: Mobile app crash on splash screen (Technical)",
+                "Hindi: UPI payment deducted but order failed (Billing)",
+                "English: Two-factor authentication SMS not delivered (Login)",
+                "Hindi: Plan upgrade refund request (Refund)",
+            ],
+        )
 
-    with c3:
-        if st.button("🇮🇳 Tamil App Crash", use_container_width=True):
-            st.session_state["query_input"] = "என் password-ஐ reset செய்ய முடியவில்லை, link expire ஆகிறது"
-            st.rerun()
+        preset_mapping = {
+            "Hindi: Password reset link expired (Login)": "मेरा पासवर्ड रीसेट नहीं हो रहा है — ईमेल में मिला रीसेट लिंक तुरंत समाप्त हो जाता है या अमान्य टोकन त्रुटि दिखाता है।",
+            "English: Billed twice on monthly subscription (Billing)": "I was charged twice for my monthly subscription on the same invoice and need the extra charge reversed.",
+            "Tamil: Mobile app crash on splash screen (Technical)": "latest version-ல் mobile app splash screen-க்குப் பிறகு immediately crash ஆகிறது; tickets open செய்ய முடியவில்லை.",
+            "Hindi: UPI payment deducted but order failed (Billing)": "यूपीआई से पैसे कट गए हैं लेकिन भुगतान असफल दिखा रहा है और ऑर्डर प्रोसेस नहीं हुआ।",
+            "English: Two-factor authentication SMS not delivered (Login)": "Two-factor authentication code is not being delivered to my phone number via SMS.",
+            "Hindi: Plan upgrade refund request (Refund)": "मैंने गलत प्लान चुन लिया था और अपग्रेड के 24 घंटे के अंदर रिफंड का अनुरोध कर रहा/रही हूँ।",
+        }
 
-    with c4:
-        if st.button("⚡ Urgent Plan Refund", use_container_width=True):
-            st.session_state["query_input"] = "मैंने गलत प्लान चुन लिया था और 24 घंटे के अंदर रिफंड का अनुरोध कर रहा हूँ"
-            st.rerun()
+        default_text = preset_mapping.get(preset_choice, "")
+        if default_text:
+            st.session_state["selected_query"] = default_text
 
-    # Search Input Box
-    query_text = st.text_area(
-        "Enter customer issue description:",
-        value=st.session_state["query_input"],
-        height=125,
-        placeholder="Type customer issue in Hindi, Tamil, or English (e.g. मेरा पासवर्ड रीसेट नहीं हो रहा... / Unable to reset password...)",
-    )
+        query_text = st.text_area(
+            "Issue description:",
+            value=st.session_state["selected_query"],
+            height=150,
+            placeholder="Enter support issue description in English, Hindi, or Tamil...",
+        )
 
-    btn_col, clear_col, _ = st.columns([1.8, 1, 4])
-    with btn_col:
-        search_pressed = st.button("🔍 Find Similar Tickets", type="primary", use_container_width=True)
-    with clear_col:
-        if st.button("Clear", use_container_width=True):
-            st.session_state["query_input"] = ""
-            st.rerun()
+        lang_hint = st.selectbox(
+            "Language hint:",
+            options=["Auto-detect", "English", "Hindi", "Tamil"],
+            help="Multilingual embedding model natively embeds all three languages into the same vector space.",
+        )
 
-    # Search Execution
-    active_query = query_text.strip()
-    if search_pressed or (active_query and st.session_state["query_input"]):
-        if not active_query:
-            st.warning("Please enter or select a customer issue description above.")
-            return
+        btn_col1, btn_col2 = st.columns([2, 1])
+        with btn_col1:
+            search_clicked = st.button("Find Similar Tickets", type="primary", use_container_width=True)
+        with btn_col2:
+            if st.button("Clear", use_container_width=True):
+                st.session_state["selected_query"] = ""
+                st.rerun()
 
-        start_time = time.time()
-        with st.spinner("Generating 384-dimensional vector & performing semantic search..."):
-            query_vector = generate_embedding(active_query)
-            results = find_similar_in_memory(query_vector, tickets, top_n=3)
-        latency_ms = (time.time() - start_time) * 1000.0
+    with col_right:
+        st.subheader("Search Results")
 
-        st.markdown(f"<div style='margin-top: 1.5rem; margin-bottom: 0.8rem; font-size: 1.15rem; font-weight: 700; color: #1e293b;'>Top {len(results)} Semantically Relevant Matches <span style='font-size: 0.85rem; font-weight: 500; color: #64748b;'>({latency_ms:.1f}ms)</span></div>", unsafe_allow_html=True)
+        active_query = query_text.strip()
 
-        for rank, match in enumerate(results, start=1):
-            score = float(match.get("similarity_score") or 0.0)
-            percent = max(0.0, min(100.0, score * 100.0))
-            lang = match.get("language_code", "en").upper()
-            cat = match.get("category_name", "General")
-            t_id = match.get("ticket_id")
-            priority = match.get("priority", "MEDIUM")
-            desc = match.get("description", "")
-            resolution = match.get("resolution", "")
+        if search_clicked or active_query:
+            if not active_query:
+                st.warning("Please enter a ticket description before searching.")
+            else:
+                start_time = time.time()
+                with st.spinner("Embedding text and searching vector store..."):
+                    query_vec = generate_embedding(active_query)
+                    results = find_similar_in_memory(query_vec, tickets, top_n=3)
+                elapsed_ms = (time.time() - start_time) * 1000.0
 
-            # Render polished HTML Card
-            st.markdown(
-                f"""
-                <div class="result-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
-                        <div>
-                            <span style="font-weight: 800; font-size: 1.05rem; color: #0f172a; margin-right: 8px;">#{rank} · Ticket #{t_id}</span>
-                            <span class="badge-pill badge-lang">🌐 {lang}</span>
-                            <span class="badge-pill badge-cat">📁 {cat}</span>
-                            <span class="badge-pill" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a;">⚡ {priority}</span>
-                        </div>
-                        <div>
-                            <span class="badge-pill badge-score">✓ {percent:.1f}% Match</span>
-                        </div>
-                    </div>
-                    <div style="color: #475569; font-size: 0.95rem; margin-bottom: 0.5rem; line-height: 1.5;">
-                        <strong style="color: #1e293b;">Original Reported Issue:</strong> {desc}
-                    </div>
-                    <div class="solution-box">
-                        <div class="solution-title">
-                            <span>✅</span> Verified Suggested Resolution
-                        </div>
-                        <div class="solution-text">{resolution if resolution else 'No resolution recorded for this ticket.'}</div>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+                st.caption(f"Found {len(results)} matching tickets in {elapsed_ms:.1f} ms")
+
+                for rank, match in enumerate(results, start=1):
+                    score = float(match.get("similarity_score") or 0.0)
+                    percent = max(0.0, min(100.0, score * 100.0))
+                    ticket_id = match.get("ticket_id")
+                    lang = str(match.get("language_code", "en")).upper()
+                    category = match.get("category_name", "General")
+                    priority = match.get("priority", "MEDIUM")
+
+                    with st.container(border=True):
+                        st.markdown(
+                            f"**#{rank} &middot; Ticket `{ticket_id}`** &nbsp;|&nbsp; "
+                            f"Language: `{lang}` &nbsp;|&nbsp; "
+                            f"Category: **{category}** &nbsp;|&nbsp; "
+                            f"Priority: `{priority}`"
+                        )
+                        st.progress(percent / 100.0)
+                        st.caption(f"Similarity score: **{percent:.1f}%** (Cosine distance: {float(match.get('similarity_distance') or 0):.4f})")
+
+                        st.markdown("**Original Description:**")
+                        st.write(match.get("description") or "(empty)")
+
+                        st.markdown("**Suggested Resolution:**")
+                        resolution = match.get("resolution")
+                        if resolution:
+                            st.success(resolution)
+                        else:
+                            st.info("No resolution text stored for this ticket.")
+        else:
+            # Clean right-side guide so space is balanced and never looks empty
+            with st.container(border=True):
+                st.markdown("#### Ready to Search")
+                st.write(
+                    "Enter a new customer issue on the left or choose a sample query from the dropdown to run semantic similarity search."
+                )
+                st.markdown("---")
+                st.markdown("**Loaded Knowledge Base Details:**")
+                st.write(f"- Total Resolved Tickets: **{len(tickets)}**")
+                st.write("- Vector Dimensions: **384 (Float32)**")
+                st.write("- Supported Languages: **English, Hindi, Tamil**")
+                st.write("- Categories: **Login, Billing, Technical, Account, Refund**")
 
 
 if __name__ == "__main__":

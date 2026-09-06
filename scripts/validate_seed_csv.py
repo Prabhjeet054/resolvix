@@ -33,7 +33,7 @@ def validate_seed_csv(csv_path: Path = CSV_PATH) -> None:
     """Load the seed CSV and assert schema / distribution requirements."""
     df = pd.read_csv(csv_path)
 
-    assert len(df) == 20, f"Expected exactly 20 rows, got {len(df)}"
+    assert len(df) >= 20, f"Expected at least 20 rows, got {len(df)}"
     assert list(df.columns) == EXPECTED_COLUMNS, (
         f"Expected columns {EXPECTED_COLUMNS}, got {list(df.columns)}"
     )

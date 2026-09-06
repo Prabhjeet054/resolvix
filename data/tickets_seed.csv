@@ -19,3 +19,27 @@ I need a refund for an unused annual license purchased last week; we switched to
 பொதுவான வினவல்: எங்கள் குழுவிற்கு பல பயனர் உரிமங்களை எவ்வாறு சேர்ப்பது என்று விளக்கம் வேண்டும்.,ta,General,சீட் மேலாண்மை பக்கத்திற்கு வழிகாட்டி அனுப்பி அடிப்படை உரிமச் சேர்க்கை படிகளை விளக்கினோம்.,LOW
 How do I export all closed tickets from the last quarter as CSV for our internal audit?,en,General,Shared the Reports > Export guide and enabled the quarterly CSV export permission on the customer admin role.,LOW
 मेरे अकाउंट से एक पुराना सहयोगी अभी भी एक्सेस कर पा रहा है — उनकी अनुमतियाँ तुरंत हटानी हैं।,hi,Account,सहयोगी की भूमिका रद्द कर सत्र टोकन निरस्त किए; सुरक्षा लॉग में पुष्टि भेजी।,URGENT
+Two-factor authentication code is not being delivered to my phone number via SMS.,en,Login,Reset SMS gateway fallback routing and temporarily enabled email-based 2FA backup verification.,HIGH
+एसएमएस के माध्यम से मेरे फ़ोन नंबर पर टू-फ़ैक्टर ऑथेंटिकेशन (2FA) कोड प्राप्त नहीं हो रहा है।,hi,Login,एसएमएस गेटवे राउटिंग रीसेट की और ईमेल आधारित 2FA बैकअप विकल्प सक्षम किया।,HIGH
+SMS மூலம் எனது தொலைபேசிக்கு இரு காரணி அங்கீகார (2FA) குறியீடு வரவில்லை.,ta,Login,எஸ்எம்எஸ் கேட்வேயை சரிசெய்து மின்னஞ்சல் வழி 2FA மாற்று முறையை இயக்கினோம்.,HIGH
+Payment failed but the money was deducted from my bank account via UPI.,en,Billing,Traced the pending transaction with the merchant acquirer; initiated auto-reversal of funds within 3 business days.,URGENT
+यूपीआई से पैसे कट गए हैं लेकिन भुगतान असफल दिखा रहा है और ऑर्डर प्रोसेस नहीं हुआ।,hi,Billing,पेमेंट गेटवे पर लंबित ट्रांजेक्शन ट्रैक कर बैंक को ऑटो-रिवर्सल का अनुरोध भेजा।,URGENT
+UPI மூலம் பணம் பிடித்தம் செய்யப்பட்டது ஆனால் கட்டணம் தோல்வி என காட்டுகிறது.,ta,Billing,நிலுவையிலுள்ள பரிவர்த்தனையை சரிபார்த்து 3 வேலை நாட்களில் பணத்தை திரும்பப் பெற உத்தரவிட்டோம்.,URGENT
+Our team is receiving HTTP 429 Too Many Requests errors when syncing tickets via REST API.,en,Technical,Identified burst rate limit violation; upgraded client tier quota and recommended exponential backoff in client integration.,HIGH
+हम जब एपीआई से सिंक करते हैं तो बार-बार '429 Too Many Requests' का एरर आ रहा है।,hi,Technical,क्लाइंट टियर का एपीआई कोटा बढ़ाया और अनुरोधों के बीच एक्सपोनेंशियल बैकऑफ लागू करने का सुझाव दिया।,HIGH
+REST API மூலம் டேட்டா பெறும்போது 429 Too Many Requests பிழை தொடர்ந்து வருகிறது.,ta,Technical,API அழைப்பு வரம்பை உயர்த்தி கிளையன்ட் அமைப்பில் தாமத உத்திகளை பரிந்துரைத்தோம்.,HIGH
+Email notifications for ticket assignment and customer replies have completely stopped working.,en,Technical,Cleared the dead-letter queue on the notification worker and restarted the SMTP relay service.,MEDIUM
+टिकट असाइन होने और ग्राहक के जवाबों की ईमेल सूचनाएं आना बिल्कुल बंद हो गई हैं।,hi,Technical,एसएमटीपी रिले सर्विस को रीस्टार्ट किया और नोटिफिकेशन कतार में फंसी ईमेल जारी कीं।,MEDIUM
+டிக்கெட் ஒதுக்கீட்டிற்கான மின்னஞ்சல் அறிவிப்புகள் வருவது முற்றிலும் நின்றுவிட்டது.,ta,Technical,அறிவிப்பு வரிசையை சுத்தம் செய்து SMTP சேவையை மீண்டும் தொடங்கினோம்.,MEDIUM
+How do we update our company GSTIN and legal billing address on generated invoices?,en,Billing,Guided user to Billing Settings > Tax Details and updated the billing profile with the verified GSTIN certificate.,LOW
+कंपनी का जीएसटी नंबर (GSTIN) और इनवॉइस का पता कैसे अपडेट करें?,hi,Billing,बिलिंग सेटिंग्स में टैक्स विवरण अपडेट करने की प्रक्रिया पूरी की और सही इनवॉइस जारी किया।,LOW
+எங்கள் நிறுவனத்தின் GSTIN மற்றும் பில்லிங் முகவரியை இன்வாய்ஸில் எவ்வாறு மாற்றுவது?,ta,Billing,வரி அமைப்புகள் பக்கத்தில் புதிய GSTIN தகவல்களை புதுப்பிக்க வழிகாட்டினோம்.,LOW
+Exporting large monthly report PDF times out after 60 seconds with gateway timeout 504.,en,Technical,Optimized the underlying aggregation query with covering index and increased the proxy timeout buffer to 120 seconds.,HIGH
+बड़ी रिपोर्ट डाउनलोड करते समय 60 सेकंड बाद 504 गेटवे टाइमआउट एरर आ जाता है।,hi,Technical,रिपोर्ट जनरेशन क्वेरी को इंडेक्स करके अनुकूलित किया और टाइमआउट सीमा 120 सेकंड तक बढ़ाई।,HIGH
+பெரிய அறிக்கை PDF பதிவிறக்கும் போது 504 கேட்வே டைம்அவுட் பிழை ஏற்படுகிறது.,ta,Technical,டேட்டாபேஸ் வினவலை மேம்படுத்தி டைம்அவுட் நேர வரம்பை அதிகரித்தோம்.,HIGH
+We need to permanently close and delete our corporate account and scrub all employee data under GDPR.,en,Account,Initiated standard account deactivation workflow and queued automated PII redaction job scheduled for 30 days.,MEDIUM
+हम अपनी कंपनी का खाता स्थायी रूप से बंद करना चाहते हैं और डेटा डिलीट करने का अनुरोध है।,hi,Account,खाता निष्क्रिय करने की प्रक्रिया शुरू की और 30 दिनों में व्यक्तिगत डेटा हटाने का शेड्यूल बनाया।,MEDIUM
+எங்கள் கார்ப்பரேட் கணக்கை நிரந்தரமாக மூடி அனைத்து ஊழியர்களின் தரவுகளையும் நீக்க வேண்டும்.,ta,Account,கணக்கு முடக்கப் பணியை தொடங்கி 30 நாட்களில் தரவு அழிப்பை திட்டமிட்டோம்.,MEDIUM
+Session gets logged out automatically every 5 minutes while actively drafting responses.,en,Login,Adjusted sticky session timeout configuration on the load balancer to maintain active session tokens for 4 hours.,MEDIUM
+जवाब लिखते समय हर 5 मिनट में अपने आप लॉगआउट हो जाता है और लिखा हुआ कंटेंट मिट जाता है।,hi,Login,लोड बैलेंसर पर सेशन टाइमआउट की अवधि 4 घंटे तक बढ़ाई; दोबारा लॉगिन की समस्या दूर हुई।,MEDIUM
+பயனர் பதில்களை தட்டச்சு செய்யும் போதே ஒவ்வொரு 5 நிமிடத்திற்கும் தானாக லாக்அவுட் ஆகிறது.,ta,Login,லோட் பேலன்சரில் அமர்வு நேர வரம்பை 4 மணி நேரமாக உயர்த்தி சிக்கலை சரிசெய்தோம்.,MEDIUM
