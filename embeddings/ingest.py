@@ -4,6 +4,10 @@ Ingest multilingual seed tickets into Oracle with embeddings.
 Loads data/tickets_seed.csv, assigns customers/agents/categories, generates
 384-dim FLOAT32 embeddings, and inserts into tickets in a single transaction.
 
+Idempotency: each run DELETE FROM tickets before inserting the 20 seed rows.
+That avoids silently doubling the table on re-runs (chosen over a description
+UNIQUE constraint so demo/test tickets can still share similar wording).
+
 VECTOR binding: python-oracledb accepts array.array('f', ...) for FLOAT32
 vectors, or NumPy ndarrays via an input type handler that converts to
 array.array and binds with oracledb.DB_TYPE_VECTOR (see Oracle vector docs).
@@ -154,6 +158,11 @@ def ingest_tickets(csv_path: Path | str = CSV_PATH, seed: int | None = 42) -> No
         cursor = conn.cursor()
 
         customer_ids, agent_ids, category_map = _load_reference_ids(cursor)
+
+        # Clear existing tickets so re-running ingest replaces the seed set
+        # instead of appending duplicates (see module docstring).
+        cursor.execute("DELETE FROM tickets")
+        print(f"Cleared existing tickets ({cursor.rowcount} row(s) deleted).")
 
         # Leave ~20% unassigned (4 of 20) to simulate open queues.
         unassigned_indexes = set(random.sample(range(len(df)), k=4))
