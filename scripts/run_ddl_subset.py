@@ -1,12 +1,11 @@
 """
 Run a focused subset of DDL files and verify explicit constraint names.
 
-This script:
-1. Connects using db.connection.get_connection()
-2. Executes 01_customers.sql, 02_agents.sql, and 03_categories.sql in order
-3. Splits SQL files on semicolons while preserving PL/SQL blocks terminated by /
-4. Queries USER_CONSTRAINTS and USER_CONS_COLUMNS to print constraint metadata
-5. Confirms no matching constraint uses a SYS_C auto-generated name
+Usage:
+  python scripts/run_ddl_subset.py
+      -> runs 01_customers.sql, 02_agents.sql, 03_categories.sql (default)
+  python scripts/run_ddl_subset.py 04_tickets.sql
+      -> runs only the named file under db/
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ from db.connection import get_connection
 
 
 DB_DIR = Path(__file__).resolve().parents[1] / "db"
-DDL_FILES = [
+DEFAULT_DDL_FILES = [
     DB_DIR / "01_customers.sql",
     DB_DIR / "02_agents.sql",
     DB_DIR / "03_categories.sql",
@@ -84,9 +83,30 @@ def execute_sql_file(cursor, sql_file: Path) -> None:
         print(f"  Executed statement {index}")
 
 
-def fetch_constraint_rows(cursor) -> list[tuple[str, str, str, str]]:
-    """Return constraint rows for the target tables."""
-    query = """
+def resolve_ddl_files(argv: list[str]) -> list[Path]:
+    """Resolve DDL files from CLI args, or fall back to the default subset."""
+    if not argv:
+        return list(DEFAULT_DDL_FILES)
+
+    resolved: list[Path] = []
+    for arg in argv:
+        candidate = Path(arg)
+        if not candidate.is_absolute():
+            # Allow either "04_tickets.sql" or "db/04_tickets.sql"
+            if candidate.parent == Path("."):
+                candidate = DB_DIR / candidate.name
+            elif not candidate.exists():
+                candidate = DB_DIR / candidate.name
+        if not candidate.exists():
+            raise FileNotFoundError(f"DDL file not found: {arg}")
+        resolved.append(candidate)
+    return resolved
+
+
+def fetch_constraint_rows(cursor, table_names: tuple[str, ...] = TARGET_TABLES):
+    """Return constraint rows for the given tables."""
+    placeholders = ", ".join(f"'{name}'" for name in table_names)
+    query = f"""
         SELECT
             uc.table_name,
             uc.constraint_name,
@@ -95,27 +115,19 @@ def fetch_constraint_rows(cursor) -> list[tuple[str, str, str, str]]:
         FROM user_constraints uc
         JOIN user_cons_columns ucc
           ON uc.constraint_name = ucc.constraint_name
-        WHERE uc.table_name IN ('CUSTOMERS', 'AGENTS', 'CATEGORIES')
-          AND uc.constraint_type IN ('P', 'U', 'C')
+        WHERE uc.table_name IN ({placeholders})
+          AND uc.constraint_type IN ('P', 'U', 'C', 'R')
         GROUP BY uc.table_name, uc.constraint_name, uc.constraint_type
-        ORDER BY
-            CASE uc.table_name
-                WHEN 'CUSTOMERS' THEN 1
-                WHEN 'AGENTS' THEN 2
-                WHEN 'CATEGORIES' THEN 3
-                ELSE 99
-            END,
-            uc.constraint_type,
-            uc.constraint_name
+        ORDER BY uc.table_name, uc.constraint_type, uc.constraint_name
     """
     cursor.execute(query)
     return cursor.fetchall()
 
 
-def verify_constraint_names(rows: list[tuple[str, str, str, str]]) -> None:
+def verify_constraint_names(rows, expected_tables: tuple[str, ...] = TARGET_TABLES) -> None:
     """Validate that no retrieved constraint uses a SYS_C auto-generated name."""
     if not rows:
-        raise AssertionError("No constraints found for CUSTOMERS, AGENTS, or CATEGORIES.")
+        raise AssertionError(f"No constraints found for {expected_tables}.")
 
     print("\nConstraint verification:")
     seen_tables = set()
@@ -127,15 +139,16 @@ def verify_constraint_names(rows: list[tuple[str, str, str, str]]) -> None:
                 f"Found auto-generated constraint name {constraint_name} on {table_name}."
             )
 
-    missing_tables = set(TARGET_TABLES) - seen_tables
+    missing_tables = set(expected_tables) - seen_tables
     if missing_tables:
         raise AssertionError(f"Missing constraint metadata for: {sorted(missing_tables)}")
 
     print("\nVerified: all reported constraints use explicit names, not SYS_C-prefixed names.")
 
 
-def run_ddl_subset() -> None:
-    """Execute the subset DDL files and verify constraint names."""
+def run_ddl_subset(ddl_files: list[Path] | None = None) -> None:
+    """Execute the requested DDL files and verify constraint names when applicable."""
+    files = ddl_files if ddl_files is not None else list(DEFAULT_DDL_FILES)
     conn = None
     cursor = None
 
@@ -143,12 +156,21 @@ def run_ddl_subset() -> None:
         conn = get_connection()
         cursor = conn.cursor()
 
-        for sql_file in DDL_FILES:
+        for sql_file in files:
             execute_sql_file(cursor, sql_file)
 
         conn.commit()
-        rows = fetch_constraint_rows(cursor)
-        verify_constraint_names(rows)
+
+        # Only run the original constraint-name verification for the default subset.
+        if files == DEFAULT_DDL_FILES or {f.name for f in files} == {
+            "01_customers.sql",
+            "02_agents.sql",
+            "03_categories.sql",
+        }:
+            rows = fetch_constraint_rows(cursor, TARGET_TABLES)
+            verify_constraint_names(rows, TARGET_TABLES)
+        else:
+            print("\nDDL file(s) executed successfully.")
     except Exception:
         if conn is not None:
             conn.rollback()
@@ -161,4 +183,4 @@ def run_ddl_subset() -> None:
 
 
 if __name__ == "__main__":
-    run_ddl_subset()
+    run_ddl_subset(resolve_ddl_files(sys.argv[1:]))

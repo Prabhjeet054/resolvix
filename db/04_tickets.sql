@@ -32,4 +32,4 @@ CREATE TABLE tickets (
     CONSTRAINT ck_tickets_resolved_after_created CHECK (
         resolved_date IS NULL OR resolved_date >= created_date
     )
-);
+) TABLESPACE users;
