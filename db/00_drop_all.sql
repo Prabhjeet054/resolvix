@@ -1,6 +1,19 @@
 -- Drop dependent objects first so the schema can be recreated cleanly.
 
 BEGIN
+    EXECUTE IMMEDIATE 'DROP MATERIALIZED VIEW daily_ticket_summary';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -12003 THEN
+            -- ORA-12003: materialized view does not exist
+            IF SQLCODE != -942 THEN
+                RAISE;
+            END IF;
+        END IF;
+END;
+/
+
+BEGIN
     EXECUTE IMMEDIATE 'DROP VIEW high_priority_open_tickets';
 EXCEPTION
     WHEN OTHERS THEN
