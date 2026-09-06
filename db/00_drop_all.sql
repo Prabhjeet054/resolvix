@@ -1,6 +1,26 @@
 -- Drop dependent objects first so the schema can be recreated cleanly.
 
 BEGIN
+    EXECUTE IMMEDIATE 'DROP VIEW high_priority_open_tickets';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -942 THEN
+            RAISE;
+        END IF;
+END;
+/
+
+BEGIN
+    EXECUTE IMMEDIATE 'DROP VIEW tickets_full_report';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -942 THEN
+            RAISE;
+        END IF;
+END;
+/
+
+BEGIN
     EXECUTE IMMEDIATE 'DROP VIEW ticket_details_view';
 EXCEPTION
     WHEN OTHERS THEN
