@@ -1,16 +1,35 @@
--- Create the tickets table with JSON metadata and vector embedding columns
+-- description_embedding is nullable so ticket rows can be inserted first
+-- (seed / ingest without vectors). Embeddings are generated later and backfilled.
 CREATE TABLE tickets (
-    ticket_id     NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    customer_id   NUMBER         NOT NULL REFERENCES customers(customer_id),
-    agent_id      NUMBER         REFERENCES agents(agent_id),
-    category_id   NUMBER         REFERENCES categories(category_id),
-    subject       VARCHAR2(500)  NOT NULL,
-    description   CLOB           NOT NULL,
-    status        VARCHAR2(50)   DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
-    priority      VARCHAR2(20)   DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'critical')),
-    language      VARCHAR2(10)   DEFAULT 'en',
-    metadata      JSON,
-    embedding     VECTOR(384, FLOAT32),
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    resolved_at   TIMESTAMP
+    ticket_id             NUMBER,
+    customer_id           NUMBER,
+    agent_id              NUMBER,
+    category_id           NUMBER,
+    description           CLOB,
+    language_code         VARCHAR2(5),
+    ticket_status         VARCHAR2(20) DEFAULT 'OPEN',
+    priority              VARCHAR2(10) DEFAULT 'MEDIUM',
+    created_date          TIMESTAMP DEFAULT SYSTIMESTAMP,
+    resolved_date         TIMESTAMP,
+    resolution            CLOB,
+    metadata              JSON,
+    description_embedding VECTOR(384, FLOAT32),
+    CONSTRAINT pk_tickets PRIMARY KEY (ticket_id),
+    CONSTRAINT fk_tickets_customer FOREIGN KEY (customer_id)
+        REFERENCES customers (customer_id),
+    CONSTRAINT fk_tickets_agent FOREIGN KEY (agent_id)
+        REFERENCES agents (agent_id),
+    CONSTRAINT fk_tickets_category FOREIGN KEY (category_id)
+        REFERENCES categories (category_id),
+    CONSTRAINT ck_tickets_description_nn CHECK (description IS NOT NULL),
+    CONSTRAINT ck_tickets_created_date_nn CHECK (created_date IS NOT NULL),
+    CONSTRAINT ck_tickets_status CHECK (
+        ticket_status IN ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED')
+    ),
+    CONSTRAINT ck_tickets_priority CHECK (
+        priority IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT')
+    ),
+    CONSTRAINT ck_tickets_resolved_after_created CHECK (
+        resolved_date IS NULL OR resolved_date >= created_date
+    )
 );
