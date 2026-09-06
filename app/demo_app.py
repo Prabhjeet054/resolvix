@@ -82,14 +82,26 @@ def load_seed_tickets_with_embeddings() -> list[dict]:
     return records
 
 
-def find_similar_in_memory(query_vec: np.ndarray, tickets: list[dict], top_n: int = 3) -> list[dict]:
-    """Calculate cosine similarity against in-memory dataset and return top matches."""
+def find_similar_in_memory(
+    query_vec: np.ndarray,
+    tickets: list[dict],
+    top_n: int = 3,
+    category_filter: str = "All",
+    priority_filter: str = "All",
+) -> list[dict]:
+    """Calculate cosine similarity against in-memory dataset with hybrid relational filtering."""
     results = []
     query_norm = np.linalg.norm(query_vec)
     if query_norm == 0:
         return []
 
     for t in tickets:
+        # Relational SQL-equivalent predicates
+        if category_filter != "All" and t["category_name"].lower() != category_filter.lower():
+            continue
+        if priority_filter != "All" and t["priority"].upper() != priority_filter.upper():
+            continue
+
         t_vec = t["embedding"]
         t_norm = np.linalg.norm(t_vec)
         if t_norm == 0:
@@ -164,7 +176,7 @@ def main() -> None:
         query_text = st.text_area(
             "Issue description:",
             value=st.session_state["selected_query"],
-            height=150,
+            height=130,
             placeholder="Enter support issue description in English, Hindi, or Tamil...",
         )
 
@@ -173,6 +185,21 @@ def main() -> None:
             options=["Auto-detect", "English", "Hindi", "Tamil"],
             help="Multilingual embedding model natively embeds all three languages into the same vector space.",
         )
+
+        # Hybrid Search relational filter controls
+        f_col1, f_col2 = st.columns(2)
+        with f_col1:
+            category_filter = st.selectbox(
+                "Filter Category:",
+                options=["All", "Billing", "Technical", "Login", "Account", "Refund", "General"],
+                help="Oracle 23ai Hybrid Search: Relational WHERE clause combined with vector distance.",
+            )
+        with f_col2:
+            priority_filter = st.selectbox(
+                "Filter Priority:",
+                options=["All", "URGENT", "HIGH", "MEDIUM", "LOW"],
+                help="Filter by ticket priority level.",
+            )
 
         btn_col1, btn_col2 = st.columns([2, 1])
         with btn_col1:
@@ -194,38 +221,85 @@ def main() -> None:
                 start_time = time.time()
                 with st.spinner("Embedding text and searching vector store..."):
                     query_vec = generate_embedding(active_query)
-                    results = find_similar_in_memory(query_vec, tickets, top_n=3)
+                    results = find_similar_in_memory(
+                        query_vec,
+                        tickets,
+                        top_n=3,
+                        category_filter=category_filter,
+                        priority_filter=priority_filter,
+                    )
                 elapsed_ms = (time.time() - start_time) * 1000.0
 
-                st.caption(f"Found {len(results)} matching tickets in {elapsed_ms:.1f} ms")
+                filter_info = []
+                if category_filter != "All":
+                    filter_info.append(f"Category: `{category_filter}`")
+                if priority_filter != "All":
+                    filter_info.append(f"Priority: `{priority_filter}`")
+                filter_suffix = f"  |  Filter: {', '.join(filter_info)}" if filter_info else ""
 
-                for rank, match in enumerate(results, start=1):
-                    score = float(match.get("similarity_score") or 0.0)
-                    percent = max(0.0, min(100.0, score * 100.0))
-                    ticket_id = match.get("ticket_id")
-                    lang = str(match.get("language_code", "en")).upper()
-                    category = match.get("category_name", "General")
-                    priority = match.get("priority", "MEDIUM")
+                st.caption(f"Found {len(results)} matching tickets in {elapsed_ms:.1f} ms{filter_suffix}")
 
-                    with st.container(border=True):
-                        st.markdown(
-                            f"**#{rank} &middot; Ticket `{ticket_id}`** &nbsp;|&nbsp; "
-                            f"Language: `{lang}` &nbsp;|&nbsp; "
-                            f"Category: **{category}** &nbsp;|&nbsp; "
-                            f"Priority: `{priority}`"
-                        )
-                        st.progress(percent / 100.0)
-                        st.caption(f"Similarity score: **{percent:.1f}%** (Cosine distance: {float(match.get('similarity_distance') or 0):.4f})")
+                if not results:
+                    st.info(
+                        f"No tickets found matching the relational filter (Category: `{category_filter}`, Priority: `{priority_filter}`). "
+                        "Try changing filters to 'All'."
+                    )
+                else:
+                    for rank, match in enumerate(results, start=1):
+                        score = float(match.get("similarity_score") or 0.0)
+                        percent = max(0.0, min(100.0, score * 100.0))
+                        ticket_id = match.get("ticket_id")
+                        lang = str(match.get("language_code", "en")).upper()
+                        category = match.get("category_name", "General")
+                        priority = match.get("priority", "MEDIUM")
 
-                        st.markdown("**Original Description:**")
-                        st.write(match.get("description") or "(empty)")
-
-                        st.markdown("**Suggested Resolution:**")
-                        resolution = match.get("resolution")
-                        if resolution:
-                            st.success(resolution)
+                        if percent >= 80.0:
+                            conf_badge = "High"
+                        elif percent >= 65.0:
+                            conf_badge = "Moderate"
                         else:
-                            st.info("No resolution text stored for this ticket.")
+                            conf_badge = "Low"
+
+                        with st.container(border=True):
+                            st.markdown(
+                                f"**#{rank} &middot; Ticket `{ticket_id}`** &nbsp;|&nbsp; "
+                                f"Language: `{lang}` &nbsp;|&nbsp; "
+                                f"Category: **{category}** &nbsp;|&nbsp; "
+                                f"Priority: `{priority}` &nbsp;|&nbsp; "
+                                f"Confidence: `{conf_badge}`"
+                            )
+                            st.progress(percent / 100.0)
+                            st.caption(f"Similarity score: **{percent:.1f}%** (Cosine distance: {float(match.get('similarity_distance') or 0):.4f})")
+
+                            st.markdown("**Original Description:**")
+                            st.write(match.get("description") or "(empty)")
+
+                            st.markdown("**Suggested Resolution:**")
+                            resolution = match.get("resolution")
+                            if resolution:
+                                st.success(resolution)
+                            else:
+                                st.info("No resolution text stored for this ticket.")
+
+                    # Oracle 23ai Hybrid Search SQL Simulation Expander
+                    with st.expander("View Equivalent Oracle 23ai Hybrid Search SQL"):
+                        where_parts = ["status IN ('RESOLVED', 'CLOSED')"]
+                        if category_filter != "All":
+                            where_parts.append(f"c.category_name = '{category_filter}'")
+                        if priority_filter != "All":
+                            where_parts.append(f"t.priority = '{priority_filter}'")
+                        where_sql = "\n  AND ".join(where_parts)
+                        st.code(
+                            f"""-- Oracle Database 23ai Hybrid Vector + Relational Query
+SELECT t.ticket_id, t.description, t.resolution, c.category_name, t.priority,
+       VECTOR_DISTANCE(t.embedding, :query_vector, COSINE) AS distance
+FROM tickets t
+JOIN categories c ON t.category_id = c.category_id
+WHERE {where_sql}
+ORDER BY distance ASC
+FETCH FIRST 3 ROWS ONLY;""",
+                            language="sql",
+                        )
         else:
             # Clean right-side guide
             with st.container(border=True):

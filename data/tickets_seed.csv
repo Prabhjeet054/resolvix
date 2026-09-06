@@ -43,3 +43,37 @@ We need to permanently close and delete our corporate account and scrub all empl
 Session gets logged out automatically every 5 minutes while actively drafting responses.,en,Login,Adjusted sticky session timeout configuration on the load balancer to maintain active session tokens for 4 hours.,MEDIUM
 जवाब लिखते समय हर 5 मिनट में अपने आप लॉगआउट हो जाता है और लिखा हुआ कंटेंट मिट जाता है।,hi,Login,लोड बैलेंसर पर सेशन टाइमआउट की अवधि 4 घंटे तक बढ़ाई; दोबारा लॉगिन की समस्या दूर हुई।,MEDIUM
 பயனர் பதில்களை தட்டச்சு செய்யும் போதே ஒவ்வொரு 5 நிமிடத்திற்கும் தானாக லாக்அவுட் ஆகிறது.,ta,Login,லோட் பேலன்சரில் அமர்வு நேர வரம்பை 4 மணி நேரமாக உயர்த்தி சிக்கலை சரிசெய்தோம்.,MEDIUM
+Refund requested two weeks ago for canceled plan is still pending and money has not credited to bank account.,en,Refund,Contacted merchant banking partner with ARN trace number; expedited pending batch settlement and funds credited in 24 hours.,HIGH
+रद्द किए गए प्लान का दो हफ्ते पहले अनुरोध किया गया रिफंड अभी भी अटका हुआ है और बैंक खाते में नहीं आया।,hi,Refund,मर्चेंट बैंक पार्टनर से एआरएन ट्रेस नंबर लेकर लंबित सेटलमेंट तुरंत प्रोसेस कराया; 24 घंटे में पैसा जमा हुआ।,HIGH
+ரத்து செய்யப்பட்ட திட்டத்திற்கான ரீஃபண்ட் இரண்டு வாரங்களாக நிலுவையில் உள்ளது மற்றும் வங்கிக் கணக்கில் வரவு வைக்கப்படவில்லை.,ta,Refund,ARN டிராக்கிங் எண் கொண்டு வங்கியுடன் தொடர்பு கொண்டு 24 மணி நேரத்திற்குள் பணம் வரவு வைக்கப்பட்டது.,HIGH
+Where can I view and download the official receipt and credit note for a previously approved refund?,en,Refund,Directed user to Billing > Credit Notes tab where downloadable PDF credit notes and transaction summaries are archived.,LOW
+पहले से स्वीकृत रिफंड की आधिकारिक रसीद और क्रेडिट नोट कहाँ से डाउनलोड कर सकते हैं?,hi,Refund,बिलिंग के 'क्रेडिट नोट्स' सेक्शन का लिंक साझा किया जहाँ स्वीकृत रिफंड के पीडीएफ दस्तावेज उपलब्ध हैं।,LOW
+முன்னர் அங்கீகரிக்கப்பட்ட ரீஃபண்டிற்கான அதிகாரப்பூர்வ ரசீது மற்றும் கிரெடிட் நோட்டை எங்கு பதிவிறக்கலாம்?,ta,Refund,பில்லிங் > கிரெடிட் நோட்ஸ் பக்கத்திற்கு வழிகாட்டி PDF பதிவிறக்க இணைப்புகளை வழங்கினோம்.,LOW
+Unauthorized recurring annual charge debited from corporate card without prior notice; immediate full refund required.,en,Refund,Suspended the unauthorized auto-renew trigger voided the transaction with acquirer and issued an immediate full credit.,URGENT
+बिना किसी पूर्व सूचना के कॉर्पोरेट क्रेडिट कार्ड से वार्षिक शुल्क काट लिया गया; तुरंत पूर्ण रिफंड चाहिए।,hi,Refund,अनधिकृत ऑटो-नवीनीकरण रोककर मर्चेंट गेटवे से तत्काल पूर्ण रिफंड जारी किया।,URGENT
+அறிவிப்பின்றி கார்ப்பரேட் கார்டில் இருந்து வருடாந்திர கட்டணம் கழிக்கப்பட்டது; உடனடியாக முழு ரீஃபண்ட் தேவை.,ta,Refund,தானியங்கி புதுப்பித்தலை நிறுத்தி முழுத் தொகையையும் உடனடியாக திரும்ப வழங்கினோம்.,URGENT
+Unable to access production workspace after team manager changed role permissions; access is completely blocked.,en,Account,Re-assigned the Member-Developer role to the user ID after verifying manager approval via ticket audit logs.,HIGH
+टीम मैनेजर द्वारा भूमिका बदलने के बाद प्रोडक्शन वर्कस्पेस खुल नहीं रहा है और एक्सेस पूरी तरह ब्लॉक हो गया है।,hi,Account,मैनेजर की स्वीकृति की पुष्टि करके यूजर को पुनः डेवलपर एक्सेस प्रदान किया।,HIGH
+மேலாளர் அனுமதிகளை மாற்றிய பின் பணிக்குழு பக்கத்தை அணுக முடியவில்லை; அணுகல் முற்றிலும் தடுக்கப்பட்டுள்ளது.,ta,Account,தணிக்கை பதிவுகளை சரிபார்த்து மேலாளர் ஒப்புதலுடன் பயனர் அணுகலை மீட்டமைத்தோம்.,HIGH
+How do I update the organization profile name and company logo displayed on our customer-facing portal?,en,Account,Shared navigation steps to Settings > Organization Profile and verified uploaded SVG logo dimensions.,LOW
+पोर्टल पर प्रदर्शित होने वाला हमारी कंपनी का नाम और लोगो कैसे बदलें?,hi,Account,सेटिंग्स में ऑर्गनाइज़ेशन प्रोफ़ाइल पेज का मार्ग बताया और लोगो अपडेट करने में सहायता की।,LOW
+எங்கள் நிறுவனத்தின் பெயர் மற்றும் லோகோவை போர்ட்டலில் எவ்வாறு புதுப்பிப்பது?,ta,Account,அமைப்புகள் > நிறுவன விவரக்குறிப்பு பக்கத்திற்கான வழிகாட்டுதலை வழங்கி லோகோ மாற்ற உதவினோம்.,LOW
+How do I clear the remembered login email address from the portal sign-in page on shared computers?,en,Login,Guided customer to clear site-specific cookies and disabled the Remember Me persistent token on the device.,LOW
+शेयर किए गए कंप्यूटर पर पोर्टल के लॉगिन पेज से याद रखा गया ईमेल एड्रेस कैसे हटाएं?,hi,Login,ब्राउज़र कुकीज़ साफ़ करने और रिमेम्बर मी टोकन निष्क्रिय करने की प्रक्रिया समझाई।,LOW
+பகிரப்பட்ட கணினியில் உள்நுழைவு பக்கத்தில் நினைவில் வைக்கப்பட்டுள்ள மின்னஞ்சல் முகவரியை எவ்வாறு அகற்றுவது?,ta,Login,வலைத்தள குக்கீகளை நீக்கி நினைவில் வைக்கும் டோக்கனை முடக்க வழிகாட்டினோம்.,LOW
+Enterprise SSO login failing for all active employees after identity provider SAML certificate renewal.,en,Login,Imported updated X.509 metadata certificate into the SSO configuration and cleared identity cache; login restored.,URGENT
+एसएएमएल सर्टिफिकेट नवीनीकरण के बाद सभी कर्मचारियों के लिए सिंगल साइन-ऑन (SSO) लॉगिन पूरी तरह विफल हो रहा है।,hi,Login,एसएसओ विन्यास में नया X.509 सर्टिफिकेट अपलोड किया और पहचान कैश साफ़ कर लॉगिन सेवा बहाल की।,URGENT
+SAML சான்றிதழ் புதுப்பித்தலுக்குப் பிறகு நிறுவன ஊழியர்கள் அனைவருக்கும் SSO லாகின் தோல்வியடைகிறது.,ta,Login,புதிய X.509 மெட்டாடேட்டா சான்றிதழைப் பதிவேற்றி SSO இணைப்பை உடனடியாக மீட்டெடுத்தோம்.,URGENT
+Please provide a consolidated annual tax invoice and receipt for financial year-end auditing.,en,Billing,Generated and emailed the consolidated FY annual tax invoice bundle signed with company digital signature.,MEDIUM
+वित्तीय वर्ष के ऑडिट के लिए समेकित वार्षिक टैक्स इनवॉइस और भुगतान रसीद की प्रति उपलब्ध कराएं।,hi,Billing,डिजिटल रूप से हस्ताक्षरित पूरे वित्तीय वर्ष का इनवॉइस बंडल तैयार करके ईमेल पर भेजा।,MEDIUM
+ஆண்டு தணிக்கைக்காக ஒருங்கிணைந்த வருடாந்திர வரி இன்வாய்ஸ் மற்றும் ரசீது நகல் தேவை.,ta,Billing,டிஜிட்டல் கையொப்பமிட்ட நிதியாண்டு வரி இன்வாய்ஸ் தொகுப்பை மின்னஞ்சல் மூலம் அனுப்பினோம்.,MEDIUM
+What is the compensation and escalation process for severe SLA downtime under our enterprise contract?,en,General,Transferred inquiry to dedicated Enterprise Account Manager and shared Section 4.2 SLA uptime credit agreement.,HIGH
+हमारे एंटरप्राइज अनुबंध के तहत गंभीर डाउनटाइम के लिए एसएलए मुआवजा और एस्केलेशन प्रक्रिया क्या है?,hi,General,पूछताछ को एंटरप्राइज अकाउंट मैनेजर को सौंपा और एसएलए क्रेडिट नीति दस्तावेज साझा किया।,HIGH
+எங்கள் ஒப்பந்தத்தின் கீழ் சேவைக் குறைபாட்டிற்கான SLA இழப்பீடு மற்றும் அடுத்தகட்ட நடவடிக்கை என்ன?,ta,General,கார்ப்பரேட் கணக்கு மேலாளரிடம் வினவலை ஒப்படைத்து SLA விதிமுறைகளை விளக்கினோம்.,HIGH
+Can we request a customized weekly PDF report format for executive stakeholder meetings?,en,General,Configured an automated weekly executive dashboard export scheduled every Monday at 08:00 UTC.,MEDIUM
+क्या हम स्टेकहोल्डर मीटिंग्स के लिए एक कस्टमाइज्ड साप्ताहिक पीडीएफ रिपोर्ट फॉर्मेट का अनुरोध कर सकते हैं?,hi,General,हर सोमवार के लिए स्वचालित कार्यकारी रिपोर्ट एक्सपोर्ट शेड्यूल कॉन्फ़िगर किया।,MEDIUM
+நிர்வாகக் கூட்டங்களுக்காக தனிப்பயனாக்கப்பட்ட வாராந்திர PDF அறிக்கையை நாங்கள் பெற முடியுமா?,ta,General,ஒவ்வொரு திங்கட்கிழமையும் தானியங்கி வாராந்திர அறிக்கை அனுப்பும் அமைப்பை உருவாக்கினோம்.,MEDIUM
+The user interface dark mode preference resets back to system default after browser restarts.,en,Technical,Fixed local storage persistence key for theme preference in the client web application bundle.,LOW
+ब्राउज़र रीस्टार्ट करने पर डार्क मोड सेटिंग अपने आप हट जाती है और डिफ़ॉल्ट लाइट मोड हो जाती है।,hi,Technical,वेब ऐप में थीम प्राथमिकताओं के लिए लोकल स्टोरेज पर्सिस्टेंस की समस्या को ठीक किया।,LOW
+உலாவியை மறுதொடக்கம் செய்த பிறகு டார்க் மோட் விருப்பம் தானாக இயல்பு நிலைக்கு மாறுகிறது.,ta,Technical,வலைப் பயன்பாட்டில் தீம் அமைப்புகளுக்கான லோக்கல் ஸ்டோரேஜ் அமைப்பை சரிசெய்தோம்.,LOW
+
