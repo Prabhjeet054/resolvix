@@ -227,19 +227,14 @@ def main() -> None:
                         else:
                             st.info("No resolution text stored for this ticket.")
         else:
-            # Clean right-side guide so space is balanced and never looks empty
+            # Clean right-side guide
             with st.container(border=True):
                 st.markdown("#### Ready to Search")
                 st.write(
                     "Enter a new customer issue on the left or choose a sample query from the dropdown to run semantic similarity search."
                 )
-                st.markdown("---")
-                st.markdown("**Loaded Knowledge Base Details:**")
-                st.write(f"- Total Resolved Tickets: **{len(tickets)}**")
-                st.write("- Vector Dimensions: **384 (Float32)**")
-                st.write("- Supported Languages: **English, Hindi, Tamil**")
-                st.write("- Categories: **Login, Billing, Technical, Account, Refund**")
 
 
 if __name__ == "__main__":
     main()
+
