@@ -23,6 +23,18 @@ from embeddings.similarity_search import find_similar_tickets
 st.set_page_config(
     page_title="Multilingual Support Ticket Assistant",
     layout="wide",
+    initial_sidebar_state="collapsed",
+)
+
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebar"], [data-testid="collapsedControl"] {
+        display: none !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 
@@ -30,72 +42,6 @@ st.set_page_config(
 def load_embedding_model():
     """Load the sentence-transformer once per process (slow cold start)."""
     return get_model()
-
-
-@st.cache_data(ttl=30)
-def fetch_sidebar_stats() -> dict:
-    """Pull lightweight ticket stats for the sidebar (cached ~30s)."""
-    conn = get_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT COUNT(*) FROM tickets")
-        total = int(cursor.fetchone()[0])
-
-        cursor.execute(
-            """
-            SELECT ticket_status, COUNT(*) AS cnt
-            FROM tickets
-            GROUP BY ticket_status
-            """
-        )
-        by_status = {str(status): int(cnt) for status, cnt in cursor.fetchall()}
-
-        cursor.execute(
-            """
-            SELECT NVL(language_code, 'unknown') AS language_code, COUNT(*) AS cnt
-            FROM tickets
-            GROUP BY NVL(language_code, 'unknown')
-            ORDER BY cnt DESC
-            """
-        )
-        by_language = {
-            str(language): int(cnt) for language, cnt in cursor.fetchall()
-        }
-
-        return {
-            "total": total,
-            "by_status": by_status,
-            "by_language": by_language,
-        }
-    finally:
-        cursor.close()
-        conn.close()
-
-
-def render_sidebar() -> None:
-    """Show live DB stats; surface a clear error if Oracle is unreachable."""
-    st.sidebar.header("Live ticket stats")
-    try:
-        stats = fetch_sidebar_stats()
-    except Exception as exc:
-        st.sidebar.error(
-            "Cannot reach Oracle Database. "
-            "Check Docker (`ticket-oracle-db`) and `.env` credentials.\n\n"
-            f"Details: {exc}"
-        )
-        return
-
-    st.sidebar.metric("Total tickets", stats["total"])
-
-    st.sidebar.subheader("By status")
-    for status in ("OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"):
-        st.sidebar.write(f"{status}: **{stats['by_status'].get(status, 0)}**")
-
-    st.sidebar.subheader("By language")
-    for language, count in stats["by_language"].items():
-        st.sidebar.write(f"{language}: **{count}**")
-
-    st.sidebar.caption("Stats refresh at most every 30 seconds.")
 
 
 def render_result_card(rank: int, match: dict) -> None:
@@ -128,7 +74,7 @@ def render_result_card(rank: int, match: dict) -> None:
 
 
 def main() -> None:
-    """Render sidebar stats and the similarity search form."""
+    """Render the similarity search form."""
     st.title("Multilingual Support Ticket Assistant")
     st.markdown(
         "Enter a new support issue in English, Hindi, or Tamil. "
@@ -140,8 +86,6 @@ def main() -> None:
         load_embedding_model()
     except Exception as exc:
         st.warning(f"Embedding model not ready yet: {exc}")
-
-    render_sidebar()
 
     description = st.text_area(
         "New ticket description",
