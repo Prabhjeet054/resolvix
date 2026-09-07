@@ -1,0 +1,11 @@
+[server]
+headless = true
+# Disable the local-sources watcher. It walks transformers' lazy imports and
+# spam-logs ModuleNotFoundError for optional vision deps (e.g. torchvision).
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false
+
+[logger]
+level = "error"

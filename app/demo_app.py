@@ -5,9 +5,17 @@ Phase 1 Working Prototype (In-Memory Semantic Search).
 
 from __future__ import annotations
 
+import os
 import sys
 import time
+import warnings
 from pathlib import Path
+
+# Keep the Streamlit terminal free of optional-deps / hub noise.
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+os.environ.setdefault("TRANSFORMERS_NO_ADVISORY_WARNINGS", "1")
+warnings.filterwarnings("ignore", message=".*unauthenticated requests to the HF Hub.*")
 
 import numpy as np
 import pandas as pd
