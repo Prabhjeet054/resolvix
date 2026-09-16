@@ -460,7 +460,17 @@ def main() -> None:
             st.caption(f"Classification: {result.classification_reasoning}")
 
         if result.escalation_required:
-            st.warning(result.escalation_hint or "ESCALATION_REQUIRED")
+            esc = result.escalation or {}
+            st.error("ESCALATION_REQUIRED = TRUE")
+            st.markdown(
+                f"**Route to:** `{esc.get('tier') or '—'}` "
+                f"**{esc.get('department') or 'TBD'}**  \n"
+                f"**On-call specialist:** {esc.get('on_call_specialist') or '—'}  \n"
+                f"**Queue:** `{esc.get('queue') or '—'}`  \n"
+                f"**Reasons:** {', '.join(esc.get('reasons') or []) or result.escalation_hint}"
+            )
+        elif result.escalation:
+            st.caption(result.escalation.get("summary", "ESCALATION_REQUIRED = FALSE"))
 
         # AI resolution card
         st.markdown("**AI Synthesized Solution**")

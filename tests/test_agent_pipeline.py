@@ -227,3 +227,33 @@ def test_agent_escalation_on_low_confidence():
 
     assert result.escalation_required is True
     assert result.escalation_hint is not None
+    assert result.escalation is not None
+    assert result.escalation["ESCALATION_REQUIRED"] is True
+    assert result.escalation["on_call_specialist"]
+    assert result.escalation["department"]
+
+
+def test_evaluate_escalation_critical_priority():
+    from agent.escalation import evaluate_escalation
+
+    decision = evaluate_escalation(
+        top_similarity=0.95,
+        priority="CRITICAL",
+        category="SECURITY",
+    )
+    assert decision.ESCALATION_REQUIRED is True
+    assert "CRITICAL" in "".join(decision.reasons)
+    assert decision.tier == "Tier-3"
+    assert "Jordan Blake" in (decision.on_call_specialist or "")
+
+
+def test_evaluate_escalation_high_confidence_no_page():
+    from agent.escalation import evaluate_escalation
+
+    decision = evaluate_escalation(
+        top_similarity=0.91,
+        priority="HIGH",
+        category="TECH",
+    )
+    assert decision.ESCALATION_REQUIRED is False
+    assert decision.on_call_specialist is None

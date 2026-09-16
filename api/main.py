@@ -36,6 +36,7 @@ class ResolveResponse(BaseModel):
     similar_ticket_ids: list[int]
     confidence: float
     escalation_required: bool
+    escalation: dict[str, Any] | None = None
     customer_id: str | None = None
 
 
@@ -65,6 +66,7 @@ def resolve_ticket(payload: ResolveRequest) -> ResolveResponse:
         similar_ticket_ids=[int(t["ticket_id"]) for t in result.similar_tickets],
         confidence=result.confidence,
         escalation_required=result.escalation_required,
+        escalation=result.escalation,
         customer_id=payload.customer_id,
     )
 

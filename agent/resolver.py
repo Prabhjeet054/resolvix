@@ -8,6 +8,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from agent.escalation import evaluate_escalation
 from agent.llm_client import OllamaClient
 from agent.prompts import (
     CLASSIFICATION_PROMPT,
@@ -42,6 +43,7 @@ class AgentResult:
     trace_steps: list[dict] = field(default_factory=list)
     llm_available: bool = False
     classification_reasoning: str = ""
+    escalation: dict | None = None  # full HITL EscalationDecision payload
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -132,14 +134,11 @@ def _extractive_resolution(query: str, tickets: list[dict]) -> str:
 
 
 def _department_for_category(category: str) -> str:
-    mapping = {
-        "TECH": "Tier-2 Application Reliability / Platform Engineering",
-        "BILLING": "Tier-2 Revenue Operations / Billing Ops",
-        "ACCOUNT": "Tier-2 Identity & Access / Account Ops",
-        "SECURITY": "Tier-3 Security Operations / IAM On-Call",
-        "GENERAL": "Tier-1 Support Lead",
-    }
-    return mapping.get(category, "Tier-1 Support Lead")
+    """Backward-compatible department label helper."""
+    from agent.escalation import recommend_routing
+
+    route = recommend_routing(category)
+    return f"{route['tier']} {route['department']}"
 
 
 class TicketResolverAgent:
@@ -344,18 +343,25 @@ class TicketResolverAgent:
             }
         )
 
-        # Confidence & escalation (HITL)
+        # Confidence & HITL escalation (Feature C)
         top_score = 0.0
         if similar:
             top_score = float(similar[0].get("similarity_score") or 0.0)
         confidence = max(0.0, min(1.0, top_score))
-        escalation_required = confidence < 0.65 or priority == "CRITICAL"
-        escalation_hint = None
-        if escalation_required:
-            escalation_hint = (
-                f"ESCALATION_REQUIRED → route to {_department_for_category(category)} "
-                f"(top similarity {confidence * 100:.1f}%, priority={priority})"
-            )
+        decision = evaluate_escalation(
+            top_similarity=confidence,
+            priority=priority,
+            category=category,
+        )
+        escalation_required = decision.ESCALATION_REQUIRED
+        escalation_hint = decision.summary if escalation_required else None
+        trace.append(
+            {
+                "step": "hitl_escalation",
+                "duration_ms": 0.0,
+                "details": decision.summary,
+            }
+        )
 
         return AgentResult(
             query=clean_query,
@@ -374,4 +380,5 @@ class TicketResolverAgent:
             trace_steps=trace,
             llm_available=llm_ok,
             classification_reasoning=reasoning,
+            escalation=decision.to_dict(),
         )
