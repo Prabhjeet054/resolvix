@@ -1,7 +1,13 @@
 """
-Lightweight FastAPI webhook scaffold for Slack / Zendesk / Jira integrations.
+Lightweight FastAPI webhooks for Slack / Zendesk / Jira Service Management.
 
-Run: uvicorn api.main:app --reload --port 8080
+Run:
+  uvicorn api.main:app --host 0.0.0.0 --port 8080
+
+Primary contract:
+  POST /api/v1/resolve
+  body: { "query": "...", "customer_id": "..." }
+  returns resolution + similar_ticket_ids (+ category/priority/escalation)
 """
 
 from __future__ import annotations
@@ -9,6 +15,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from agent.resolver import TicketResolverAgent
@@ -16,19 +23,31 @@ from agent.resolver import TicketResolverAgent
 app = FastAPI(
     title="Resolvix Resolve API",
     version="0.1.0",
-    description="POST /api/v1/resolve — multilingual agentic RAG resolution webhook",
+    description=(
+        "Multilingual agentic RAG webhook for Slack bots, Zendesk, and "
+        "Jira Service Management integrations."
+    ),
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
 class ResolveRequest(BaseModel):
     query: str = Field(..., min_length=1, description="Customer issue text")
-    customer_id: str | None = Field(default=None, description="External CRM customer id")
+    customer_id: str | None = Field(
+        default=None, description="External CRM / Zendesk / Jira customer id"
+    )
     top_n: int = Field(default=3, ge=1, le=10)
 
 
 class ResolveResponse(BaseModel):
     resolution: str
-    localized_resolution: str | None
+    localized_resolution: str | None = None
     category: str
     priority: str
     language_code: str
@@ -42,18 +61,19 @@ class ResolveResponse(BaseModel):
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "service": "resolvix-api"}
 
 
 @app.post("/api/v1/resolve", response_model=ResolveResponse)
 def resolve_ticket(payload: ResolveRequest) -> ResolveResponse:
-    """Resolve a support query and return structured agent output."""
+    """Resolve a support query for bot / helpdesk integrations."""
     try:
         agent = TicketResolverAgent()
         result = agent.resolve(payload.query, top_n=payload.top_n)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
+        # Never leak stack traces to integrators; keep a clear error body.
         raise HTTPException(status_code=500, detail=f"resolve failed: {exc}") from exc
 
     return ResolveResponse(
@@ -73,9 +93,24 @@ def resolve_ticket(payload: ResolveRequest) -> ResolveResponse:
 
 @app.get("/api/v1/resolve/schema")
 def resolve_schema() -> dict[str, Any]:
-    """Documentation helper for integrators."""
+    """Integrator-facing contract for Slack / Zendesk / Jira adapters."""
     return {
         "endpoint": "POST /api/v1/resolve",
-        "body": {"query": "...", "customer_id": "optional", "top_n": 3},
-        "returns": ["resolution", "similar_ticket_ids", "category", "priority"],
+        "integrations": ["slack", "zendesk", "jira_service_management"],
+        "body": {
+            "query": "string (required)",
+            "customer_id": "string (optional)",
+            "top_n": "int (optional, default 3)",
+        },
+        "returns": [
+            "resolution",
+            "similar_ticket_ids",
+            "category",
+            "priority",
+            "confidence",
+            "escalation_required",
+            "escalation",
+            "search_backend",
+            "customer_id",
+        ],
     }
