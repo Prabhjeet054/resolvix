@@ -12,6 +12,7 @@ from agent.llm_client import OllamaClient
 from agent.prompts import (
     CLASSIFICATION_PROMPT,
     RAG_SYNTHESIS_PROMPT,
+    REFINE_PROMPT,
     SYSTEM_PROMPT,
     TRANSLATION_PROMPT,
     format_evidence,
@@ -155,28 +156,52 @@ class TicketResolverAgent:
         priority_filter: str | None = None,
         language_override: str | None = None,
         chat_history: list[dict[str, str]] | None = None,
+        prior_tickets: list[dict] | None = None,
+        original_query: str | None = None,
     ) -> AgentResult:
-        """Run the full pipeline and return a structured AgentResult."""
+        """Run the full pipeline and return a structured AgentResult.
+
+        When ``chat_history`` / ``prior_tickets`` are provided, runs in
+        Refine & Clarify mode: prior retrieved tickets stay as evidence and
+        the follow-up is answered with conversation context via Ollama.
+        """
         trace: list[dict] = []
         clean_query = (query or "").strip()
         if not clean_query:
             raise ValueError("query must be a non-empty string")
 
-        # Language detection
+        refine_mode = bool(chat_history) or bool(prior_tickets)
+        base_issue = (original_query or clean_query).strip()
+
+        # Language detection (prefer original issue language in refine mode)
         t0 = _now_ms()
-        lang_code = (language_override or detect_language(clean_query)).lower()
+        detect_text = base_issue if refine_mode else clean_query
+        lang_code = (language_override or detect_language(detect_text)).lower()
         lang_name = get_language_name(lang_code)
         trace.append(
             {
                 "step": "language_detection",
                 "duration_ms": round(_now_ms() - t0, 1),
-                "details": f"{lang_name} ({lang_code})",
+                "details": f"{lang_name} ({lang_code})"
+                + (" [refine]" if refine_mode else ""),
             }
         )
 
-        # Embedding
+        # Embedding + retrieval (reuse prior tickets on follow-up when available)
         t0 = _now_ms()
-        embedding = generate_embedding(clean_query)
+        if refine_mode and prior_tickets:
+            similar = list(prior_tickets)[:top_n]
+            embedding = generate_embedding(base_issue)
+            retrieval_detail = f"reused prior tickets ({len(similar)})"
+        else:
+            embedding = generate_embedding(clean_query)
+            similar = find_similar_tickets(
+                embedding,
+                top_n=top_n,
+                category_filter=category_filter,
+                priority_filter=priority_filter,
+            )
+            retrieval_detail = f"fresh search matches={len(similar)}"
         trace.append(
             {
                 "step": "embedding",
@@ -185,18 +210,6 @@ class TicketResolverAgent:
             }
         )
 
-        # Dual-mode retrieval
-        t0 = _now_ms()
-        similar = find_similar_tickets(
-            embedding,
-            top_n=top_n,
-            category_filter=category_filter,
-            priority_filter=priority_filter,
-        )
-        backend = similar[0]["source_mode"] if similar else (
-            "ORACLE_23AI" if False else "IN_MEMORY"
-        )
-        # Prefer explicit tag even when empty: probe via first successful path
         if similar:
             backend = str(similar[0].get("source_mode", "IN_MEMORY"))
         else:
@@ -205,18 +218,20 @@ class TicketResolverAgent:
             backend = "ORACLE_23AI" if is_db_available() else "IN_MEMORY"
 
         live_sql = build_oracle_sql(category_filter, priority_filter)
+        t_retrieve = _now_ms()
         trace.append(
             {
                 "step": "retrieval",
-                "duration_ms": round(_now_ms() - t0, 1),
-                "details": f"backend={backend}, matches={len(similar)}",
+                "duration_ms": round(t_retrieve - t0, 1),
+                "details": f"backend={backend}, {retrieval_detail}",
             }
         )
 
         llm_ok = self.llm.is_available()
 
-        # Classification
+        # Classification (keep prior classification signal from base issue in refine)
         t0 = _now_ms()
+        classify_text = base_issue if refine_mode else clean_query
         if llm_ok:
             try:
                 raw = self.llm.chat(
@@ -224,7 +239,7 @@ class TicketResolverAgent:
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {
                             "role": "user",
-                            "content": CLASSIFICATION_PROMPT.format(query=clean_query),
+                            "content": CLASSIFICATION_PROMPT.format(query=classify_text),
                         },
                     ],
                     temperature=0.1,
@@ -232,10 +247,10 @@ class TicketResolverAgent:
                 category, priority, reasoning = _parse_classification(raw)
                 class_detail = "ollama"
             except Exception as exc:
-                category, priority, reasoning = _heuristic_classification(clean_query)
+                category, priority, reasoning = _heuristic_classification(classify_text)
                 class_detail = f"heuristic after LLM error: {exc}"
         else:
-            category, priority, reasoning = _heuristic_classification(clean_query)
+            category, priority, reasoning = _heuristic_classification(classify_text)
             class_detail = "heuristic (ollama offline)"
         trace.append(
             {
@@ -245,7 +260,7 @@ class TicketResolverAgent:
             }
         )
 
-        # RAG synthesis
+        # RAG synthesis / refine
         t0 = _now_ms()
         evidence = format_evidence(similar)
         if llm_ok:
@@ -254,28 +269,41 @@ class TicketResolverAgent:
                     {"role": "system", "content": SYSTEM_PROMPT},
                 ]
                 if chat_history:
-                    messages.extend(chat_history[-6:])
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": RAG_SYNTHESIS_PROMPT.format(
-                            query=clean_query,
-                            language_name=lang_name,
-                            language_code=lang_code,
-                            category=category,
-                            priority=priority,
-                            evidence=evidence,
-                        ),
-                    }
-                )
+                    messages.extend(chat_history[-8:])
+                if refine_mode:
+                    user_content = REFINE_PROMPT.format(
+                        original_query=base_issue,
+                        follow_up=clean_query,
+                        evidence=evidence,
+                    )
+                else:
+                    user_content = RAG_SYNTHESIS_PROMPT.format(
+                        query=clean_query,
+                        language_name=lang_name,
+                        language_code=lang_code,
+                        category=category,
+                        priority=priority,
+                        evidence=evidence,
+                    )
+                messages.append({"role": "user", "content": user_content})
                 synthesized = self.llm.chat(messages, temperature=0.3)
-                synth_detail = "ollama grounded RAG"
+                synth_detail = (
+                    "ollama refine+clarify" if refine_mode else "ollama grounded RAG"
+                )
             except Exception as exc:
                 synthesized = _extractive_resolution(clean_query, similar)
                 synth_detail = f"extractive after LLM error: {exc}"
         else:
-            synthesized = _extractive_resolution(clean_query, similar)
-            synth_detail = "extractive (ollama offline)"
+            if refine_mode:
+                synthesized = (
+                    f"### Refined answer (LLM offline)\n"
+                    f"_Follow-up:_ {clean_query}\n\n"
+                    + _extractive_resolution(base_issue, similar)
+                )
+                synth_detail = "extractive refine (ollama offline)"
+            else:
+                synthesized = _extractive_resolution(clean_query, similar)
+                synth_detail = "extractive (ollama offline)"
         trace.append(
             {
                 "step": "rag_synthesis",

@@ -157,6 +157,8 @@ def main() -> None:
         st.session_state["ollama_model"] = default_model
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = []
+    if "original_query" not in st.session_state:
+        st.session_state["original_query"] = ""
     if "last_result" not in st.session_state:
         st.session_state["last_result"] = None
     if "selected_query" not in st.session_state:
@@ -289,16 +291,53 @@ def main() -> None:
                 st.session_state["selected_query"] = ""
                 st.session_state["last_result"] = None
                 st.session_state["feedback"] = None
+                st.session_state["chat_history"] = []
+                st.session_state["original_query"] = ""
                 st.rerun()
 
         st.divider()
         st.markdown("#### Refine & Clarify (multi-turn)")
-        follow_up = st.text_input(
-            "Follow-up question",
-            placeholder="e.g. Simplify this for a non-technical user",
-            key="follow_up_input",
+        st.caption(
+            "Ask follow-ups with full chat history + previously retrieved tickets "
+            "passed into Ollama."
         )
-        refine_clicked = st.button("Ask follow-up", use_container_width=True)
+        sample_followups = [
+            "Can you simplify this for a non-technical user?",
+            "What if I'm on macOS instead of Windows?",
+            "Give me only the first 3 steps to try right now.",
+        ]
+        picked = st.selectbox(
+            "Quick follow-up:",
+            options=["— Type your own below —", *sample_followups],
+            key="followup_preset",
+        )
+        if picked.startswith("—"):
+            follow_placeholder = "e.g. Can you simplify this for a non-technical user?"
+            follow_default = st.session_state.get("follow_up_draft", "")
+        else:
+            follow_placeholder = picked
+            follow_default = picked
+        follow_up = st.text_area(
+            "Follow-up question",
+            value=follow_default,
+            height=70,
+            placeholder=follow_placeholder,
+            key="follow_up_draft",
+        )
+        refine_clicked = st.button(
+            "Ask follow-up",
+            use_container_width=True,
+            disabled=st.session_state.get("last_result") is None,
+        )
+        history = st.session_state.get("chat_history") or []
+        if history:
+            with st.expander(f"Conversation history ({len(history) // 2} turns)", expanded=False):
+                for msg in history:
+                    role = msg.get("role", "?")
+                    content = msg.get("content", "")
+                    preview = content if len(content) <= 240 else content[:240] + "…"
+                    st.markdown(f"**{role}:** {preview}")
+
 
     with col_right:
         st.subheader("Agent Resolution")
@@ -306,16 +345,26 @@ def main() -> None:
 
         run_query = None
         use_history = None
+        prior_tickets = None
+        original_query = None
         if search_clicked:
             run_query = query_text.strip()
             use_history = None
             st.session_state["chat_history"] = []
+            st.session_state["original_query"] = run_query
         elif refine_clicked and result is not None and follow_up.strip():
             run_query = follow_up.strip()
-            use_history = list(st.session_state["chat_history"]) + [
-                {"role": "user", "content": result.query},
-                {"role": "assistant", "content": result.synthesized_resolution},
-            ]
+            # Pass prior conversation + retrieved tickets into the agent/Ollama
+            use_history = list(st.session_state["chat_history"])
+            if not use_history:
+                use_history = [
+                    {"role": "user", "content": result.query},
+                    {"role": "assistant", "content": result.synthesized_resolution},
+                ]
+            prior_tickets = list(result.similar_tickets or [])
+            original_query = (
+                st.session_state.get("original_query") or result.query
+            )
 
         if run_query is not None:
             if not run_query:
@@ -337,13 +386,20 @@ def main() -> None:
                             else priority_filter,
                             language_override=language_override,
                             chat_history=use_history,
+                            prior_tickets=prior_tickets,
+                            original_query=original_query,
                         )
                         st.session_state["last_result"] = result
                         st.session_state["selected_query"] = query_text
                         st.session_state["chat_history"] = (use_history or []) + [
                             {"role": "user", "content": run_query},
-                            {"role": "assistant", "content": result.synthesized_resolution},
+                            {
+                                "role": "assistant",
+                                "content": result.synthesized_resolution,
+                            },
                         ]
+                        if not st.session_state.get("original_query"):
+                            st.session_state["original_query"] = run_query
                         st.session_state["feedback"] = None
                     except Exception as exc:
                         st.error(

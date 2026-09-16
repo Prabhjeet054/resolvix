@@ -55,6 +55,30 @@ Resolution to translate:
 {resolution}
 """
 
+REFINE_PROMPT = """You are continuing an existing support conversation (Refine & Clarify).
+
+The customer follow-up may ask to simplify, adapt to another OS/environment, or clarify steps.
+Answer the follow-up using:
+1) The conversation so far (already in chat messages)
+2) The historical ticket evidence below
+3) The original issue context
+
+Rules:
+- Stay grounded in the evidence; do not invent new ticket facts.
+- If adapting steps (e.g. macOS vs Windows), clearly note assumptions.
+- Keep a short Markdown checklist.
+- Cite ticket IDs when reusing historical resolutions.
+
+Original issue:
+{original_query}
+
+Follow-up:
+{follow_up}
+
+Historical evidence (retrieved tickets):
+{evidence}
+"""
+
 
 def format_evidence(similar_tickets: list[dict]) -> str:
     """Render top matched tickets into a compact evidence block for the LLM."""
