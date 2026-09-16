@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 .DS_Store
 credentials/demo_db_users.env
+docs/CURSOR_PROMPT.md
+docs/CURSOR_PROMPTS.md

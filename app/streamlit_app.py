@@ -1,8 +1,7 @@
 """
-Streamlit entry point for the Multilingual Support Ticket Assistant.
+Streamlit entry point for Resolvix Agentic RAG.
 
-Delegates to demo_app, which provides the two-column query/results UI
-(sample queries, hybrid category/priority filters, confidence cards).
+Delegates to demo_app (health badges, dual-mode search, Ollama agent UI).
 """
 
 from __future__ import annotations
@@ -10,7 +9,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# Ensure both project root and app/ are importable when launched via Streamlit.
 _APP_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _APP_DIR.parent
 for path in (_PROJECT_ROOT, _APP_DIR):
