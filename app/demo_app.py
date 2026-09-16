@@ -88,12 +88,23 @@ def load_embedding_model():
     return get_model()
 
 
+def _chat_models(models: list[str]) -> list[str]:
+    """Prefer completion models; hide pure embedding tags from the UI dropdown."""
+    chat: list[str] = []
+    for name in models:
+        lower = name.lower()
+        if "embed" in lower or "nomic-embed" in lower:
+            continue
+        chat.append(name)
+    return chat or list(models)
+
+
 @st.cache_data(ttl=15)
 def fetch_health(model_name: str) -> dict:
     oracle_ok = is_db_available()
     client = OllamaClient(model=model_name)
     ollama_ok = client.is_available()
-    models = client.list_models() if ollama_ok else []
+    models = _chat_models(client.list_models()) if ollama_ok else []
     return {
         "oracle_ok": oracle_ok,
         "ollama_ok": ollama_ok,
@@ -372,45 +383,52 @@ def main() -> None:
             st.warning(result.escalation_hint or "ESCALATION_REQUIRED")
 
         # AI resolution card
-        show_native = False
+        st.markdown("**AI Synthesized Solution**")
         if result.localized_resolution and result.detected_language_code != "en":
-            tab_en, tab_native = st.tabs(
-                ["Show English", f"Show {result.detected_language_name}"]
+            english_label = "Show English"
+            native_label = f"Show {result.detected_language_name}"
+            lang_view = st.radio(
+                "Resolution language",
+                options=[english_label, native_label],
+                horizontal=True,
+                label_visibility="collapsed",
             )
-            with tab_en:
-                st.markdown(
-                    f'<div class="resolution-card">{result.synthesized_resolution}</div>',
-                    unsafe_allow_html=True,
-                )
-            with tab_native:
-                st.markdown(
-                    f'<div class="resolution-card">{result.localized_resolution}</div>',
-                    unsafe_allow_html=True,
-                )
-                show_native = True
+            body = (
+                result.localized_resolution
+                if lang_view == native_label
+                else result.synthesized_resolution
+            )
         else:
-            st.markdown("**AI Synthesized Solution**")
-            st.markdown(result.synthesized_resolution)
+            body = result.synthesized_resolution
 
-        copy_text = (
-            result.localized_resolution
-            if show_native and result.localized_resolution
-            else result.synthesized_resolution
-        )
-        st.code(copy_text, language="markdown")
+        with st.container(border=True):
+            st.markdown('<div class="resolution-card">', unsafe_allow_html=True)
+            st.markdown(body)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-        fb1, fb2, fb3 = st.columns([1, 1, 2])
-        with fb1:
-            if st.button("👍 Helpful"):
+        copy_text = body
+        c1, c2, c3, c4 = st.columns([1.2, 1, 1, 2])
+        with c1:
+            st.download_button(
+                "📋 Copy resolution",
+                data=copy_text,
+                file_name="resolvix_resolution.md",
+                mime="text/markdown",
+                use_container_width=True,
+            )
+        with c2:
+            if st.button("👍 Helpful", use_container_width=True):
                 st.session_state["feedback"] = "up"
-        with fb2:
-            if st.button("👎 Not helpful"):
+        with c3:
+            if st.button("👎 Not helpful", use_container_width=True):
                 st.session_state["feedback"] = "down"
-        with fb3:
+        with c4:
             if st.session_state.get("feedback") == "up":
                 st.success("Thanks — feedback recorded.")
             elif st.session_state.get("feedback") == "down":
                 st.info("Thanks — we'll use this to improve grounding.")
+        with st.expander("Raw markdown (clipboard-friendly)", expanded=False):
+            st.code(copy_text, language="markdown")
 
         # File ticket action
         st.divider()
