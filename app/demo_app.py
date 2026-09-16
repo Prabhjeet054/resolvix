@@ -193,10 +193,34 @@ def main() -> None:
         st.divider()
         st.subheader("Roadmap")
         st.caption("Multi-turn refine · Semantic incident clustering · HITL escalation")
+        cluster_method = st.selectbox(
+            "Incident clustering method",
+            options=["dbscan", "kmeans", "greedy"],
+            index=0,
+            key="cluster_method",
+        )
+        if st.button("Run last-24h incident scan", use_container_width=True):
+            with st.spinner("Clustering recent ticket embeddings…"):
+                from analytics.clustering import analyze_last_24h
+
+                report = analyze_last_24h(method=cluster_method)  # type: ignore[arg-type]
+            st.session_state["incident_report"] = report
+        report = st.session_state.get("incident_report")
+        if report:
+            st.caption(report.get("message", ""))
+            bursts = report.get("hourly_burst_alerts") or []
+            clusters = report.get("alerts") or []
+            if bursts:
+                st.error(bursts[0]["message"])
+            elif clusters:
+                st.warning(clusters[0]["message"])
+            else:
+                st.info("No emerging major incidents detected.")
         if st.button("Clear chat history"):
             st.session_state["chat_history"] = []
             st.session_state["last_result"] = None
             st.session_state["feedback"] = None
+            st.session_state["incident_report"] = None
             st.rerun()
 
     try:

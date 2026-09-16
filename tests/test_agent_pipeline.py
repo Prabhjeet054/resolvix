@@ -118,9 +118,44 @@ def test_clustering_alerts_on_dense_group():
         embeddings=embeddings,
         similarity_threshold=0.88,
         min_cluster_size=5,
+        method="greedy",
     )
     assert len(alerts) == 1
     assert alerts[0].size == 5
+
+
+def test_dbscan_clustering_dense_group():
+    base = np.ones(16, dtype=np.float32)
+    embeddings = np.stack([base + (i * 0.001) for i in range(5)])
+    alerts = cluster_recent_embeddings(
+        ticket_ids=[11, 12, 13, 14, 15],
+        embeddings=embeddings,
+        similarity_threshold=0.88,
+        min_cluster_size=5,
+        method="dbscan",
+    )
+    assert len(alerts) >= 1
+    assert alerts[0].size >= 5
+
+
+def test_hourly_burst_detection():
+    from datetime import datetime, timedelta, timezone
+
+    from analytics.clustering import detect_hourly_bursts
+
+    base = np.ones(8, dtype=np.float32)
+    embeddings = np.stack([base for _ in range(5)])
+    now = datetime.now(timezone.utc)
+    created = [now - timedelta(minutes=i * 5) for i in range(5)]
+    alerts = detect_hourly_bursts(
+        ticket_ids=[1, 2, 3, 4, 5],
+        embeddings=embeddings,
+        created_at=created,
+        similarity_threshold=0.88,
+        min_cluster_size=5,
+    )
+    assert len(alerts) == 1
+    assert "Emerging Major Incident Alert" in alerts[0].message
 
 
 def test_agent_resolve_offline_pipeline():
