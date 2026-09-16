@@ -110,3 +110,10 @@ def test_cross_lingual_translation_pairs_vs_unrelated():
     print(
         "[PASS] Translation pairs > 0.7 and unrelated pair is meaningfully lower."
     )
+
+
+if __name__ == "__main__":
+    test_generate_embedding_shape_and_dtype()
+    test_generate_embedding_rejects_empty_and_none()
+    test_cross_lingual_translation_pairs_vs_unrelated()
+    print("\nAll test_embeddings assertions passed!")

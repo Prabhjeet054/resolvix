@@ -15,7 +15,7 @@ Invoice shows tax applied twice for an India GST customer on the March billing c
 मेरा खाता लॉगिन के बाद डैशबोर्ड पर अटक जाता है और टिकट सूची कभी लोड नहीं होती।,hi,Technical,API टाइमआउट लॉग में मिली धीमी क्वेरी को इंडेक्स करके ठीक किया; कैश रिफ्रेश के बाद डैशबोर्ड सामान्य रहा।,HIGH
 கட்டணம் வெற்றிகரமாக முடிந்ததாகக் காட்டியும் சந்தா இன்னும் செயலற்ற நிலையில் உள்ளது.,ta,Billing,வெற்றிகரமான பேமெண்ட் வெப்குக் தாமதத்தை மீண்டும் இயக்கி சந்தா நிலையை Active ஆக புதுப்பித்தோம்.,HIGH
 I need a refund for an unused annual license purchased last week; we switched to the monthly plan instead.,en,Refund,Processed a prorated refund for the unused annual license and activated the monthly plan on the same day.,MEDIUM
-"पासवर्ड सही होने के बावजूद लॉगिन पर 'invalid credentials' मिल रहा है — कैप्चा भी बार-बार फेल हो रहा है।",hi,Login,कैप्चा प्रोवाइडर की कुंजी रोटेट की और खाते का लॉक-आउट काउंटर रीसेट किया; लॉगिन सफल रहा।,HIGH
+पासवर्ड सही होने के बावजूद लॉगिन पर 'invalid credentials' मिल रहा है — कैप्चा भी बार-बार फेल हो रहा है।,hi,Login,कैप्चा प्रोवाइडर की कुंजी रोटेट की और खाते का लॉक-आउट काउंटर रीसेट किया; लॉगिन सफल रहा।,HIGH
 பொதுவான வினவல்: எங்கள் குழுவிற்கு பல பயனர் உரிமங்களை எவ்வாறு சேர்ப்பது என்று விளக்கம் வேண்டும்.,ta,General,சீட் மேலாண்மை பக்கத்திற்கு வழிகாட்டி அனுப்பி அடிப்படை உரிமச் சேர்க்கை படிகளை விளக்கினோம்.,LOW
 How do I export all closed tickets from the last quarter as CSV for our internal audit?,en,General,Shared the Reports > Export guide and enabled the quarterly CSV export permission on the customer admin role.,LOW
 मेरे अकाउंट से एक पुराना सहयोगी अभी भी एक्सेस कर पा रहा है — उनकी अनुमतियाँ तुरंत हटानी हैं।,hi,Account,सहयोगी की भूमिका रद्द कर सत्र टोकन निरस्त किए; सुरक्षा लॉग में पुष्टि भेजी।,URGENT
@@ -76,4 +76,23 @@ Can we request a customized weekly PDF report format for executive stakeholder m
 The user interface dark mode preference resets back to system default after browser restarts.,en,Technical,Fixed local storage persistence key for theme preference in the client web application bundle.,LOW
 ब्राउज़र रीस्टार्ट करने पर डार्क मोड सेटिंग अपने आप हट जाती है और डिफ़ॉल्ट लाइट मोड हो जाती है।,hi,Technical,वेब ऐप में थीम प्राथमिकताओं के लिए लोकल स्टोरेज पर्सिस्टेंस की समस्या को ठीक किया।,LOW
 உலாவியை மறுதொடக்கம் செய்த பிறகு டார்க் மோட் விருப்பம் தானாக இயல்பு நிலைக்கு மாறுகிறது.,ta,Technical,வலைப் பயன்பாட்டில் தீம் அமைப்புகளுக்கான லோக்கல் ஸ்டோரேஜ் அமைப்பை சரிசெய்தோம்.,LOW
-
+No puedo restablecer mi contraseña: el enlace de restablecimiento expira de inmediato o arroja error de token no válido.,es,Login,Se invalidaron los tokens obsoletos de la cuenta y se envió un enlace fresco de restablecimiento con 30 minutos de vigencia.,HIGH
+Se me cobró dos veces por la suscripción mensual en la misma factura y necesito el reembolso del cargo extra.,es,Billing,Se confirmó el cobro duplicado en la pasarela de pagos; se emitió el reembolso correspondiente.,HIGH
+La aplicación móvil se cierra inesperadamente justo después de la pantalla de inicio y no puedo abrir ningún ticket.,es,Technical,Se identificó un fallo de puntero nulo en el módulo de inicio; se publicó actualización correctiva.,URGENT
+Elegí el plan equivocado y solicito un reembolso dentro de las primeras 24 horas posteriores a la suscripción.,es,Refund,Se procesó el reembolso total de la tarifa de actualización y se restauró el plan anterior.,MEDIUM
+Impossible de réinitialiser mon mot de passe — le lien de réinitialisation expire immédiatement ou renvoie une erreur de jeton invalide.,fr,Login,Les anciens jetons ont été invalidés et un nouvel e-mail de réinitialisation valide 30 minutes a été envoyé.,HIGH
+J'ai été facturé deux fois pour mon abonnement mensuel sur la même facture et je souhaite le remboursement.,fr,Billing,Capture en double confirmée sur la passerelle de paiement; remboursement émis et solde mis à jour.,HIGH
+L'application mobile plante immédiatement après l'écran de démarrage et je ne peux ouvrir aucun ticket.,fr,Technical,Correction d'un crash au démarrage dans la dernière mise à jour; conseillé au client de vider le cache.,URGENT
+Le code d'authentification à deux facteurs ne m'est pas envoyé par SMS sur mon numéro de téléphone.,fr,Login,Routage de secours de la passerelle SMS réinitialisé et vérification 2FA par e-mail activée.,HIGH
+Ich kann mein Passwort nicht zurücksetzen — der Link in der E-Mail läuft sofort ab oder meldet einen ungültigen Token.,de,Login,Veraltete Token ungültig gemacht und neue E-Mail mit 30-minütiger Gültigkeit versendet.,HIGH
+Mein monatliches Abonnement wurde doppelt abgebucht und ich benötige eine Rückerstattung der zusätzlichen Gebühr.,de,Billing,Doppelbuchung im Zahlungs-Gateway bestätigt; Rückerstattung veranlasst und Rechnungsbetrag bereinigt.,HIGH
+Die mobile App stürzt unmittelbar nach dem Startbildschirm ab und ich kann keine Tickets aufrufen.,de,Technical,Null-Pointer-Fehler im Startmodul behoben und Hotfix-Build für die Kunden bereitgestellt.,URGENT
+パスワードを再設定できません。メール内のリセットリンクがすぐに期限切れになるか、無効なトークンエラーが発生します。,ja,Login,古いトークンを無効化し、30分間有効な新しいパスワード再設定メールを送信しました。,HIGH
+月額サブスクリプションで同一の請求書に二重請求が発生したため、返金を希望します。,ja,Billing,決済ゲートウェイでの二重課金を確認し、過剰請求分の返金処理を完了しました。,HIGH
+最新バージョンのモバイルアプリがスプラッシュ画面の直後にクラッシュし、チケットを閲覧できません。,ja,Technical,起動モジュールの不具合を修正したホットフィックスを配信し、キャッシュ削除と更新を案内しました。,URGENT
+لا يمكنني إعادة تعيين كلمة المرور - ينتهي رابط إعادة التعيين فوراً أو تظهر رسالة خطأ بالرمز المميز.,ar,Login,تم إلغاء الرموز القديمة وإرسال بريد إلكتروني جديد لإعادة تعيين كلمة المرور بصلاحية 30 دقيقة.,HIGH
+تم خصم رسوم الاشتراك الشهري مرتين في نفس الفاتورة وأطلب استرداد المبلغ الإضافي.,ar,Billing,تم تأكيد الخصم المزدوج عبر بوابة الدفع وإصدار استرداد وتحديث رصيد الفاتورة.,HIGH
+আমি আমার পাসওয়ার্ড রিসেট করতে পারছি না — ইমেলের রিসেট লিঙ্কটি সাথে সাথে মেয়াদোত্তীর্ণ হয়ে যাচ্ছে বা অবৈধ টোকেন ত্রুটি দেখাচ্ছে।,bn,Login,পুরানো টোকেন বাতিল করে ৩০ মিনিটের মেয়াদসহ নতুন পাসওয়ার্ড রিসেট লিঙ্ক পাঠানো হয়েছে।,HIGH
+একই ইনভয়েসে আমার মাসিক সাবস্ক্রিপশনের জন্য দুইবার টাকা কাটা হয়েছে এবং অতিরিক্ত টাকা ফেরত চাই।,bn,Billing,পেমেন্ট গেটওয়েতে ডুপ্লিকেট চার্জ নিশ্চিত করা হয়েছে এবং রিফান্ড প্রসেস করা হয়েছে।,HIGH
+నా పాస్‌వర్డ్ రీసెట్ చేయడం సాధ్యం కావడం లేదు — ఇమెయిల్‌లోని రీసెట్ లింక్ వెంటనే గడువు ముగుస్తుంది లేదా చెల్లని టోకెన్ ఎర్రర్ వస్తుంది.,te,Login,పాత టోకెన్లను రద్దు చేసి 30 నిమిషాల గడువుతో కొత్త పాస్‌వర్డ్ రీసెట్ ఇమెయిల్ పంపాము.,HIGH
+ఒకే ఇన్‌వాయిస్‌పై నా నెలవారీ సబ్‌స్క్రిప్షన్ కోసం రెండుసార్లు ఛార్జ్ చేయబడింది మరియు అదనపు ఛార్జీని వాపసు చేయాలి.,te,Billing,పేమెంట్ గేట్‌వేలో డూప్లికేట్ ఛార్జీని ధృవీకరించి రీఫండ్ జారీ చేశాము.,HIGH

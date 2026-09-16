@@ -15,6 +15,8 @@ from __future__ import annotations
 from functools import lru_cache
 
 import numpy as np
+
+import embeddings.compat  # noqa: F401 (Applies Windows Smart App Control shims)
 from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
