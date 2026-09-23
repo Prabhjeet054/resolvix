@@ -35,17 +35,44 @@ A multilingual support-ticket resolution assistant that uses Oracle AI Vector Se
    python embeddings/ingest.py
    ```
 
-6. **Launch the Streamlit app:**
+6. **Launch the shared web UI (FastAPI):**
+   ```bash
+   uvicorn api.main:app --host 127.0.0.1 --port 8080
+   ```
+   Open http://127.0.0.1:8080
+
+7. **Or launch the desktop app (Electron):**
+   ```bash
+   cd electron
+   npm install
+   npm start
+   ```
+   Electron auto-starts the Python API and opens the same UI. See [electron/README.md](electron/README.md).
+
+8. **Optional — Streamlit demo:**
    ```bash
    streamlit run app/streamlit_app.py
    ```
 
+## Desktop app
+
+Resolvix ships a downloadable Electron shell in [`electron/`](electron/) that:
+
+- Starts `uvicorn api.main:app` from your local Python `.venv`
+- Loads the shared frontend from [`frontend/`](frontend/) (same UI as the browser)
+
+Build installers with `npm run dist:mac` / `dist:win` / `dist:linux` inside `electron/`.
+
 ## Project Structure
 
 ```
+├── api/             # FastAPI backend (resolve, status, tickets, static UI)
+├── frontend/        # Shared web UI (browser + Electron)
+├── electron/        # Electron desktop shell (auto-starts Python API)
 ├── db/              # SQL DDL/DML scripts and connection module
 ├── embeddings/      # Embedding generation and data ingestion
-├── app/             # Streamlit frontend
+├── agent/           # Ollama agent pipeline
+├── app/             # Streamlit frontend (optional demo)
 ├── data/            # Sample seed data (CSV)
 ├── tests/           # Unit tests
 ├── scripts/         # Utility scripts

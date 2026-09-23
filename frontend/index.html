@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Resolvix — Agentic RAG Assistant</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <aside class="sidebar" id="sidebar">
+    <h2>System Diagnostics</h2>
+    <div id="badge-oracle" class="badge-status offline">Oracle 23ai: checking…</div>
+    <div id="badge-ollama" class="badge-status offline">Ollama LLM: checking…</div>
+
+    <label class="field-label" for="model-select">Ollama model</label>
+    <select id="model-select"></select>
+
+    <hr />
+    <h3>Roadmap</h3>
+    <p class="muted">Multi-turn refine · Semantic incident clustering · HITL escalation</p>
+
+    <label class="field-label" for="cluster-method">Incident clustering method</label>
+    <select id="cluster-method">
+      <option value="dbscan">dbscan</option>
+      <option value="kmeans">kmeans</option>
+      <option value="greedy">greedy</option>
+    </select>
+    <button type="button" id="btn-incident-scan" class="btn btn-secondary btn-block">
+      Run last-24h incident scan
+    </button>
+    <div id="incident-panel" class="incident-panel hidden"></div>
+
+    <button type="button" id="btn-clear-session" class="btn btn-ghost btn-block">
+      Clear chat history
+    </button>
+  </aside>
+
+  <main class="main">
+    <header class="hero">
+      <h1>Resolvix — Multilingual Agentic RAG</h1>
+      <p class="subtitle">
+        Oracle 23ai AI Vector Search · Local Ollama agent · Dual-mode resilient retrieval
+      </p>
+    </header>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>New Ticket Query</h2>
+
+        <label class="field-label" for="preset-select">Load sample query</label>
+        <select id="preset-select">
+          <option value="">— Custom input (type below) —</option>
+          <option value="hi">Hindi: Password reset link expired (Login)</option>
+          <option value="en">English: Billed twice on monthly subscription (Billing)</option>
+          <option value="ta">Tamil: Mobile app crash on splash screen (Technical)</option>
+          <option value="es">Spanish: No puedo iniciar sesión (Security)</option>
+          <option value="ja">Japanese: アプリが起動直後にクラッシュします (Tech)</option>
+        </select>
+
+        <label class="field-label" for="query-text">Issue description</label>
+        <textarea
+          id="query-text"
+          rows="6"
+          placeholder="Describe the issue in any language…"
+        ></textarea>
+        <p class="muted" id="detected-lang">Detected language: —</p>
+
+        <label class="field-label" for="lang-hint">Language hint</label>
+        <select id="lang-hint">
+          <option value="">Auto-detect</option>
+          <option value="en">English</option>
+          <option value="hi">Hindi</option>
+          <option value="ta">Tamil</option>
+          <option value="es">Spanish</option>
+          <option value="ja">Japanese</option>
+          <option value="de">German</option>
+        </select>
+
+        <div class="row">
+          <div>
+            <label class="field-label" for="category-filter">Filter Category</label>
+            <select id="category-filter">
+              <option value="">All</option>
+              <option value="Billing">Billing</option>
+              <option value="Technical">Technical</option>
+              <option value="Login">Login</option>
+              <option value="Account">Account</option>
+              <option value="Refund">Refund</option>
+              <option value="General">General</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label" for="priority-filter">Filter Priority</label>
+            <select id="priority-filter">
+              <option value="">All</option>
+              <option value="URGENT">URGENT</option>
+              <option value="HIGH">HIGH</option>
+              <option value="MEDIUM">MEDIUM</option>
+              <option value="LOW">LOW</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row actions">
+          <button type="button" id="btn-resolve" class="btn btn-primary">
+            Resolve with AI Agent
+          </button>
+          <button type="button" id="btn-clear-query" class="btn btn-secondary">Clear</button>
+        </div>
+
+        <hr />
+        <h3>Refine &amp; Clarify (multi-turn)</h3>
+        <p class="muted">
+          Ask follow-ups with full chat history + previously retrieved tickets passed into Ollama.
+        </p>
+        <label class="field-label" for="followup-preset">Quick follow-up</label>
+        <select id="followup-preset">
+          <option value="">— Type your own below —</option>
+          <option>Can you simplify this for a non-technical user?</option>
+          <option>What if I'm on macOS instead of Windows?</option>
+          <option>Give me only the first 3 steps to try right now.</option>
+        </select>
+        <label class="field-label" for="follow-up">Follow-up question</label>
+        <textarea
+          id="follow-up"
+          rows="3"
+          placeholder="e.g. Can you simplify this for a non-technical user?"
+        ></textarea>
+        <button type="button" id="btn-refine" class="btn btn-secondary btn-block" disabled>
+          Ask follow-up
+        </button>
+        <div id="chat-history" class="chat-history hidden"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Agent Resolution</h2>
+        <div id="result-empty" class="empty-state">
+          <h3>Ready to resolve</h3>
+          <p>
+            Enter a customer issue on the left (any of 50+ languages) and click
+            <strong>Resolve with AI Agent</strong>. The system will retrieve similar tickets from
+            Oracle 23ai (or in-memory fallback) and synthesize a grounded resolution.
+          </p>
+        </div>
+
+        <div id="result-panel" class="hidden">
+          <p class="muted" id="result-meta"></p>
+          <div id="result-badges" class="badges"></div>
+          <p class="muted" id="classification-reason"></p>
+          <div id="escalation-box" class="escalation hidden"></div>
+
+          <h3>AI Synthesized Solution</h3>
+          <div id="lang-toggle" class="lang-toggle hidden">
+            <label><input type="radio" name="lang-view" value="en" checked /> Show English</label>
+            <label><input type="radio" name="lang-view" value="native" /> Show native</label>
+          </div>
+          <div id="resolution-card" class="resolution-card"></div>
+
+          <div class="row actions">
+            <button type="button" id="btn-copy" class="btn btn-secondary">Copy resolution</button>
+            <button type="button" id="btn-up" class="btn btn-ghost">Helpful</button>
+            <button type="button" id="btn-down" class="btn btn-ghost">Not helpful</button>
+            <span id="feedback-msg" class="muted"></span>
+          </div>
+
+          <button type="button" id="btn-file-ticket" class="btn btn-secondary btn-block">
+            File This as New Ticket in Oracle 23ai
+          </button>
+          <p id="file-ticket-msg" class="muted"></p>
+
+          <h3>Matched Reference Tickets</h3>
+          <div id="similar-tickets"></div>
+
+          <details class="expander">
+            <summary>Agent Reasoning &amp; Tool Trace</summary>
+            <ul id="trace-list"></ul>
+          </details>
+
+          <details class="expander">
+            <summary>Live Oracle 23ai SQL</summary>
+            <pre id="live-sql" class="code-block"></pre>
+            <p class="muted">
+              Executed when Oracle is online. Offline mode uses in-memory cosine over
+              data/tickets_seed.csv instead.
+            </p>
+          </details>
+        </div>
+
+        <div id="loading" class="loading hidden">Running agent pipeline…</div>
+        <div id="error-banner" class="error-banner hidden"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

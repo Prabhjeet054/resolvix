@@ -73,3 +73,45 @@ def test_resolve_webhook_returns_resolution_and_ticket_ids():
 def test_resolve_rejects_empty_query():
     resp = client.post("/api/v1/resolve", json={"query": ""})
     assert resp.status_code == 422
+
+
+def test_system_status_endpoint():
+    with patch("api.main.is_db_available", return_value=False), patch(
+        "api.main.OllamaClient"
+    ) as mock_cls:
+        mock = MagicMock()
+        mock.is_available.return_value = False
+        mock.list_models.return_value = []
+        mock_cls.return_value = mock
+        resp = client.get("/api/v1/status")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "oracle_ok" in body
+    assert "ollama_ok" in body
+    assert "models" in body
+    assert body["oracle_ok"] is False
+
+
+def test_file_ticket_offline_message():
+    with patch("api.main.is_db_available", return_value=False):
+        resp = client.post(
+            "/api/v1/tickets",
+            json={
+                "description": "Cannot login",
+                "category": "SECURITY",
+                "priority": "HIGH",
+                "language_code": "en",
+            },
+        )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["filed"] is False
+    assert body["ticket_id"] is None
+    assert "offline" in body["message"].lower()
+
+
+def test_frontend_index_served():
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert "text/html" in resp.headers.get("content-type", "")
+    assert b"Resolvix" in resp.content
