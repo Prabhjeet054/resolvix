@@ -8,9 +8,9 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder",
-    "dist:mac": "electron-builder --mac",
+    "pack": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir -c.mac.identity=null",
+    "dist": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder -c.mac.identity=null",
+    "dist:mac": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac -c.mac.identity=null",
     "dist:win": "electron-builder --win",
     "dist:linux": "electron-builder --linux"
   },
@@ -32,7 +32,8 @@
     },
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": ["dmg", "zip"]
+      "identity": null,
+      "target": ["zip", "dmg"]
     },
     "win": {
       "target": ["nsis", "portable"]

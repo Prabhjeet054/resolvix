@@ -48,15 +48,22 @@ Open http://127.0.0.1:8080 — identical frontend.
 
 ## Build installers
 
+Unsigned local builds (recommended for development):
+
 ```bash
-npm run dist:mac     # .dmg / .zip
-npm run dist:win     # NSIS / portable
-npm run dist:linux   # AppImage / deb
+npm run pack        # → dist/mac-arm64/Resolvix.app
+npm run dist:mac    # → dist/Resolvix-*.dmg and/or .zip
 ```
 
-Artifacts land in `electron/dist/`.
+Artifacts:
+- `dist/mac-arm64/Resolvix.app` — run directly
+- `dist/Resolvix-0.1.0-arm64-mac.zip` — distributable zip
+- `dist/Resolvix-0.1.0-arm64.dmg` — macOS disk image (when `hdiutil` succeeds)
+
+Code signing is disabled by default (`mac.identity: null`) so local builds do not require an Apple Developer certificate. For App Store / notarized releases, set a signing identity and remove `-c.mac.identity=null`.
 
 **Packaging note:** The installer ships the Electron shell. The Python API is started from the Resolvix checkout + `.venv` (set `RESOLVIX_ROOT` if needed). Embedding a full PyInstaller Python bundle inside the DMG/EXE is a follow-up hardening step. Oracle and Ollama remain external services.
+
 
 ## Layout
 
