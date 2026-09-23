@@ -29,8 +29,17 @@ def get_model() -> SentenceTransformer:
 
     The model is loaded once per process and reused on later calls so
     ingest and query paths do not pay the download/init cost repeatedly.
+
+    Prefers the local Hugging Face cache when network/proxy access fails
+    (common in sandboxed desktop launches).
     """
-    return SentenceTransformer(MODEL_NAME)
+    try:
+        return SentenceTransformer(MODEL_NAME)
+    except Exception as primary_error:
+        try:
+            return SentenceTransformer(MODEL_NAME, local_files_only=True)
+        except Exception:
+            raise primary_error from None
 
 
 def generate_embedding(text: str) -> np.ndarray:

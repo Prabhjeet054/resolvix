@@ -41,7 +41,7 @@ async function boot() {
   mainWindow = createSplash("Starting local Resolvix API…");
 
   try {
-    backend = startBackend({ port: DEFAULT_PORT });
+    backend = await startBackend({ port: DEFAULT_PORT });
   } catch (err) {
     mainWindow.loadURL(
       `data:text/html;charset=utf-8,${encodeURIComponent(
@@ -51,21 +51,23 @@ async function boot() {
     return;
   }
 
-  backend.child.on("exit", (code) => {
-    if (!app.isQuitting && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.loadURL(
-        `data:text/html;charset=utf-8,${encodeURIComponent(
-          `<div style="font-family:sans-serif;padding:2rem">
-            <h2>Resolvix backend exited</h2>
-            <p>Python process exited with code ${code}. Check that the project
-            virtualenv exists and dependencies are installed.</p>
-            <p>Project root: <code>${backend.projectRoot}</code></p>
-            <p>Python: <code>${backend.python}</code></p>
-          </div>`
-        )}`
-      );
-    }
-  });
+  if (backend.child) {
+    backend.child.on("exit", (code) => {
+      if (!app.isQuitting && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.loadURL(
+          `data:text/html;charset=utf-8,${encodeURIComponent(
+            `<div style="font-family:sans-serif;padding:2rem">
+              <h2>Resolvix backend exited</h2>
+              <p>Python process exited with code ${code}. Check that the project
+              virtualenv exists and dependencies are installed.</p>
+              <p>Project root: <code>${backend.projectRoot}</code></p>
+              <p>Python: <code>${backend.python}</code></p>
+            </div>`
+          )}`
+        );
+      }
+    });
+  }
 
   try {
     await backend.waitForReady(90000);
@@ -81,9 +83,9 @@ async function boot() {
             <ol>
               <li>Python venv at <code>${backend.projectRoot}/.venv</code></li>
               <li><code>pip install -r requirements.txt</code></li>
-              <li>Port ${DEFAULT_PORT} is free</li>
+              <li>A free port near ${DEFAULT_PORT} (auto-selected: ${backend.port})</li>
             </ol>
-            <p>Or set <code>RESOLVIX_ROOT</code> / <code>RESOLVIX_PYTHON</code>.</p>
+            <p>Or set <code>RESOLVIX_ROOT</code> / <code>RESOLVIX_PYTHON</code> / <code>RESOLVIX_PORT</code>.</p>
           </div>`
         )}`
       );

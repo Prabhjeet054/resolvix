@@ -15,6 +15,12 @@ Primary contracts:
 from __future__ import annotations
 
 import os
+
+# Prefer cached embedding weights so desktop/sandbox launches do not depend on Hub.
+os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("TRANSFORMERS_NO_ADVISORY_WARNINGS", "1")
+
 from pathlib import Path
 from typing import Any, Literal
 

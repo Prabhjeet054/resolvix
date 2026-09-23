@@ -5,6 +5,7 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
+const net = require("net");
 
 const DEFAULT_HOST = "127.0.0.1";
 const DEFAULT_PORT = Number(process.env.RESOLVIX_PORT || 8080);
@@ -44,6 +45,47 @@ function resolvePython(projectRoot) {
     }
   }
   return process.platform === "win32" ? "python" : "python3";
+}
+
+function probeHealth(host, port, timeoutMs = 1500) {
+  return new Promise((resolve) => {
+    const req = http.get({ host, port, path: "/health", timeout: timeoutMs }, (res) => {
+      let data = "";
+      res.on("data", (chunk) => {
+        data += chunk;
+      });
+      res.on("end", () => {
+        resolve(res.statusCode === 200 ? data : null);
+      });
+    });
+    req.on("error", () => resolve(null));
+    req.on("timeout", () => {
+      req.destroy();
+      resolve(null);
+    });
+  });
+}
+
+function isPortFree(host, port) {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once("error", () => resolve(false));
+    server.once("listening", () => {
+      server.close(() => resolve(true));
+    });
+    server.listen(port, host);
+  });
+}
+
+async function choosePort(host, preferred) {
+  for (let port = preferred; port < preferred + 20; port += 1) {
+    if (await isPortFree(host, port)) {
+      return { port, reuse: false };
+    }
+  }
+  throw new Error(
+    `No free Resolvix API port found in range ${preferred}-${preferred + 19}`
+  );
 }
 
 function waitForHealth(host, port, timeoutMs = 60000) {
@@ -89,9 +131,25 @@ function waitForHealth(host, port, timeoutMs = 60000) {
   });
 }
 
-function startBackend({ host = DEFAULT_HOST, port = DEFAULT_PORT } = {}) {
+async function startBackend({ host = DEFAULT_HOST, port = DEFAULT_PORT } = {}) {
   const projectRoot = resolveProjectRoot();
   const python = resolvePython(projectRoot);
+  const chosen = await choosePort(host, port);
+  const selectedPort = chosen.port;
+
+  if (chosen.reuse) {
+    return {
+      child: null,
+      reused: true,
+      python,
+      projectRoot,
+      host,
+      port: selectedPort,
+      url: `http://${host}:${selectedPort}`,
+      waitForReady: async () => probeHealth(host, selectedPort),
+    };
+  }
+
   const args = [
     "-m",
     "uvicorn",
@@ -99,12 +157,20 @@ function startBackend({ host = DEFAULT_HOST, port = DEFAULT_PORT } = {}) {
     "--host",
     host,
     "--port",
-    String(port),
+    String(selectedPort),
   ];
 
   const child = spawn(python, args, {
     cwd: projectRoot,
-    env: { ...process.env, PYTHONUNBUFFERED: "1" },
+    env: {
+      ...process.env,
+      PYTHONUNBUFFERED: "1",
+      // Prefer cached sentence-transformers weights; avoid Hub round-trips on launch.
+      HF_HUB_OFFLINE: process.env.HF_HUB_OFFLINE || "1",
+      TRANSFORMERS_OFFLINE: process.env.TRANSFORMERS_OFFLINE || "1",
+      HF_HUB_DISABLE_TELEMETRY: "1",
+      TOKENIZERS_PARALLELISM: "false",
+    },
     stdio: ["ignore", "pipe", "pipe"],
   });
 
@@ -117,12 +183,13 @@ function startBackend({ host = DEFAULT_HOST, port = DEFAULT_PORT } = {}) {
 
   return {
     child,
+    reused: false,
     python,
     projectRoot,
     host,
-    port,
-    url: `http://${host}:${port}`,
-    waitForReady: (timeoutMs) => waitForHealth(host, port, timeoutMs),
+    port: selectedPort,
+    url: `http://${host}:${selectedPort}`,
+    waitForReady: (timeoutMs) => waitForHealth(host, selectedPort, timeoutMs),
   };
 }
 
@@ -150,4 +217,5 @@ module.exports = {
   startBackend,
   stopBackend,
   waitForHealth,
+  choosePort,
 };

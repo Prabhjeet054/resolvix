@@ -288,6 +288,40 @@
     }
   }
 
+  function wireThemeToggle() {
+    const root = document.documentElement;
+
+    function currentTheme() {
+      return root.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    }
+
+    function syncButtons(theme) {
+      document.querySelectorAll("[data-theme-set]").forEach((btn) => {
+        const active = btn.getAttribute("data-theme-set") === theme;
+        btn.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+    }
+
+    function setTheme(theme) {
+      const next = theme === "dark" ? "dark" : "light";
+      root.setAttribute("data-theme", next);
+      try {
+        localStorage.setItem("resolvix-theme", next);
+      } catch {
+        // ignore private-mode storage failures
+      }
+      syncButtons(next);
+    }
+
+    document.querySelectorAll("[data-theme-set]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setTheme(btn.getAttribute("data-theme-set"));
+      });
+    });
+
+    syncButtons(currentTheme());
+  }
+
   function wireEvents() {
     $("model-select").addEventListener("change", (e) => {
       state.model = e.target.value;
@@ -406,6 +440,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    wireThemeToggle();
     wireEvents();
     refreshStatus();
     setInterval(refreshStatus, 15000);

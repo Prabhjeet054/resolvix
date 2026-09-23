@@ -4,6 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Resolvix — Agentic RAG Assistant</title>
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem("resolvix-theme");
+        var theme = saved === "light" || saved === "dark"
+          ? saved
+          : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body>
@@ -37,10 +50,24 @@
 
   <main class="main">
     <header class="hero">
-      <h1>Resolvix — Multilingual Agentic RAG</h1>
-      <p class="subtitle">
-        Oracle 23ai AI Vector Search · Local Ollama agent · Dual-mode resilient retrieval
-      </p>
+      <div class="hero-row">
+        <div>
+          <h1>Resolvix — Multilingual Agentic RAG</h1>
+          <p class="subtitle">
+            Oracle 23ai AI Vector Search · Local Ollama agent · Dual-mode resilient retrieval
+          </p>
+        </div>
+        <div class="theme-toggle theme-toggle-header" role="group" aria-label="Color theme">
+          <button type="button" class="theme-btn" data-theme-set="light" aria-pressed="false" title="Light mode">
+            <span class="theme-icon" aria-hidden="true">☀</span>
+            <span>Light</span>
+          </button>
+          <button type="button" class="theme-btn" data-theme-set="dark" aria-pressed="false" title="Dark mode">
+            <span class="theme-icon" aria-hidden="true">☾</span>
+            <span>Dark</span>
+          </button>
+        </div>
+      </div>
     </header>
 
     <div class="grid">
