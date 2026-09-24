@@ -13,5 +13,6 @@ contextBridge.exposeInMainWorld("resolvixDesktop", {
     confidenceEscalation: true,
     themeToggle: true,
     feedbackLoop: true,
+    hybridSearch: true,
   },
 });

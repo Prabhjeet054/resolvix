@@ -1,7 +1,7 @@
 {
   "name": "resolvix-desktop",
   "version": "0.1.0",
-  "description": "Resolvix desktop shell — Electron launcher that starts the Python FastAPI backend and loads the shared web UI (Agent Resolve, Emerging Incidents, thumbs feedback).",
+  "description": "Resolvix desktop shell — Electron launcher for the shared FastAPI UI (Agent Resolve, Emerging Incidents, feedback, hybrid search).",
   "main": "main.js",
   "author": "Resolvix",
   "license": "MIT",

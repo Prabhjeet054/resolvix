@@ -239,8 +239,10 @@
             <summary>Live Oracle 23ai SQL</summary>
             <pre id="live-sql" class="code-block"></pre>
             <p class="muted">
-              Executed when Oracle is online. Offline mode uses in-memory cosine over
-              data/tickets_seed.csv instead.
+              Hybrid retrieval: VECTOR_DISTANCE plus keyword/LIKE (and Oracle Text
+              CONTAINS when available) for error codes, ticket IDs, and product names.
+              Offline mode uses in-memory cosine + the same keyword boosts over
+              data/tickets_seed.csv.
             </p>
           </details>
         </div>

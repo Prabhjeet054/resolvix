@@ -179,6 +179,8 @@ def render_result_card(rank: int, match: dict) -> None:
             f"Category: **{match.get('category_name', '?')}** &nbsp;|&nbsp; "
             f"Priority: `{match.get('priority', '?')}`"
         )
+        match_type = str(match.get("match_type") or "vector")
+        title += f" · `{match_type}`"
         if match.get("feedback_flagged"):
             title += " · ⚠️ prior thumbs-down"
         st.markdown(title)
@@ -188,10 +190,12 @@ def render_result_card(rank: int, match: dict) -> None:
             vote_caption = (
                 f" · votes 👍{int(votes.get('up') or 0)} / 👎{int(votes.get('down') or 0)}"
             )
+        kw = match.get("keyword_hits") or []
+        kw_caption = f" · hits: {', '.join(str(x) for x in kw[:4])}" if kw else ""
         st.caption(
             f"Similarity score: **{percent:.1f}%** "
             f"(Cosine distance: {float(match.get('similarity_distance') or 0):.4f})"
-            f"{vote_caption}"
+            f"{kw_caption}{vote_caption}"
         )
         st.markdown("**Original Description:**")
         st.write(match.get("description") or "(empty)")
@@ -714,9 +718,9 @@ def main() -> None:
 
         # Status line
         backend_label = (
-            "Oracle 23ai VECTOR_DISTANCE"
+            "Oracle 23ai hybrid (vector + keyword)"
             if result.search_backend == "ORACLE_23AI"
-            else "In-Memory cosine fallback"
+            else "In-Memory hybrid (cosine + keyword)"
         )
         st.caption(
             f"Backend: **{backend_label}** · Language: {result.detected_language_name} "
@@ -857,8 +861,10 @@ def main() -> None:
         with st.expander("Live Oracle 23ai SQL", expanded=False):
             st.code(result.live_sql, language="sql")
             st.caption(
-                "Executed when Oracle is online. Offline mode uses in-memory cosine "
-                "over data/tickets_seed.csv instead."
+                "Hybrid retrieval: VECTOR_DISTANCE ∪ keyword/LIKE "
+                "(+ Oracle Text CONTAINS when available) for error codes, "
+                "ticket IDs, and product names. Offline mode uses in-memory "
+                "cosine + the same keyword boosts over data/tickets_seed.csv."
             )
 
 

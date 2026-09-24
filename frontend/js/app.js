@@ -232,11 +232,20 @@
 
     const backend =
       result.search_backend === "ORACLE_23AI"
-        ? "Oracle 23ai VECTOR_DISTANCE"
-        : "In-Memory cosine fallback";
+        ? "Oracle 23ai hybrid (vector + keyword)"
+        : "In-Memory hybrid (cosine + keyword)";
     $("result-meta").textContent =
       `Backend: ${backend} · Language: ${result.detected_language_name || "?"} ` +
       `(${result.language_code || "?"})`;
+
+    const tickets = result.similar_tickets || [];
+    const hybridCount = tickets.filter(
+      (t) => t.match_type === "hybrid" || t.match_type === "keyword"
+    ).length;
+    if (hybridCount) {
+      $("result-meta").textContent +=
+        ` · Hybrid matches: ${hybridCount}/${tickets.length}`;
+    }
 
     const catClass = CATEGORY_PILL[result.category] || "pill-general";
     const priClass = PRIORITY_PILL[result.priority] || "pill-medium";
@@ -265,7 +274,6 @@
 
     const similar = $("similar-tickets");
     similar.innerHTML = "";
-    const tickets = result.similar_tickets || [];
     if (!tickets.length) {
       similar.innerHTML = `<p class="muted">No similar resolved/closed tickets found.</p>`;
     } else {
@@ -279,6 +287,17 @@
         const feedbackNote = match.feedback_flagged
           ? ` <span class="pill pill-critical">prior thumbs-down</span>`
           : "";
+        const matchType = match.match_type || "vector";
+        const matchPill =
+          matchType === "hybrid"
+            ? ` <span class="pill pill-tech">hybrid</span>`
+            : matchType === "keyword"
+              ? ` <span class="pill pill-security">keyword</span>`
+              : ` <span class="pill pill-general">vector</span>`;
+        const kwHits = (match.keyword_hits || []).slice(0, 4);
+        const kwCaption = kwHits.length
+          ? ` · hits: ${kwHits.map((h) => escapeHtml(String(h))).join(", ")}`
+          : "";
         const votes = match.feedback_votes || {};
         const voteCaption =
           votes.up || votes.down
@@ -290,9 +309,10 @@
           `Language: ${escapeHtml(String(match.language_code || "?").toUpperCase())} | ` +
           `Category: ${escapeHtml(match.category_name || "?")} | ` +
           `Priority: ${escapeHtml(match.priority || "?")}` +
+          matchPill +
           feedbackNote +
           `<div class="progress"><span style="width:${Math.min(100, pct)}%"></span></div>` +
-          `<p class="muted">Similarity: <strong>${pct.toFixed(1)}%</strong>${voteCaption}</p>` +
+          `<p class="muted">Similarity: <strong>${pct.toFixed(1)}%</strong>${kwCaption}${voteCaption}</p>` +
           `<p><strong>Original Description:</strong><br>${escapeHtml(match.description || "(empty)")}</p>` +
           `<p><strong>Historical Resolution:</strong><br>${escapeHtml(match.resolution || "No resolution text stored.")}</p>`;
         similar.appendChild(card);

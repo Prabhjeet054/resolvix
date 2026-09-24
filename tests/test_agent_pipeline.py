@@ -16,7 +16,7 @@ from agent.resolver import (
     _parse_classification,
 )
 from analytics.clustering import cluster_recent_embeddings
-from embeddings.similarity_search import build_oracle_sql, find_similar_in_memory
+from embeddings.similarity_search import build_oracle_hybrid_sql, build_oracle_sql, find_similar_in_memory
 
 
 def test_parse_classification_json():
@@ -46,6 +46,13 @@ def test_build_oracle_sql_includes_vector_distance():
     assert "COSINE" in sql
     assert "category_filter" in sql
     assert "priority_filter" in sql
+
+
+def test_build_oracle_hybrid_sql_documents_keyword_branch():
+    sql = build_oracle_hybrid_sql("ORA-12541 on ticket #109")
+    assert "VECTOR_DISTANCE" in sql
+    assert "Hybrid search" in sql
+    assert "ticket:109" in sql or "109" in sql
 
 
 def test_find_similar_in_memory_returns_scores():

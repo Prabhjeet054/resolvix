@@ -20,7 +20,7 @@ from agent.prompts import (
 )
 from embeddings.generate import generate_embedding
 from embeddings.languages import detect_language, get_language_name
-from embeddings.similarity_search import build_oracle_sql, find_similar_tickets
+from embeddings.similarity_search import build_oracle_hybrid_sql, find_similar_tickets
 
 
 @dataclass
@@ -199,10 +199,15 @@ class TicketResolverAgent:
                 top_n=top_n,
                 category_filter=category_filter,
                 priority_filter=priority_filter,
+                query_text=clean_query,
             )
             flagged_n = sum(1 for t in similar if t.get("feedback_flagged"))
+            hybrid_n = sum(
+                1 for t in similar if t.get("match_type") in {"hybrid", "keyword"}
+            )
             retrieval_detail = (
-                f"fresh search matches={len(similar)}"
+                f"fresh hybrid search matches={len(similar)}"
+                + (f", keyword/hybrid={hybrid_n}" if hybrid_n else "")
                 + (f", feedback_flagged={flagged_n}" if flagged_n else "")
             )
         trace.append(
@@ -220,7 +225,11 @@ class TicketResolverAgent:
 
             backend = "ORACLE_23AI" if is_db_available() else "IN_MEMORY"
 
-        live_sql = build_oracle_sql(category_filter, priority_filter)
+        live_sql = build_oracle_hybrid_sql(
+            query_text=clean_query,
+            category_filter=category_filter,
+            priority_filter=priority_filter,
+        )
         t_retrieve = _now_ms()
         trace.append(
             {
