@@ -29,17 +29,10 @@
     <select id="model-select"></select>
 
     <hr />
-    <h3>Roadmap</h3>
-    <p class="muted">Multi-turn refine · Semantic incident clustering · HITL confidence + auto-escalate</p>
-
-    <label class="field-label" for="cluster-method">Incident clustering method</label>
-    <select id="cluster-method">
-      <option value="dbscan">dbscan</option>
-      <option value="kmeans">kmeans</option>
-      <option value="greedy">greedy</option>
-    </select>
-    <button type="button" id="btn-incident-scan" class="btn btn-secondary btn-block">
-      Run last-24h incident scan
+    <h3>Incident Ops</h3>
+    <p class="muted">Last-24h semantic clusters · burst alerts · ticket deep-links</p>
+    <button type="button" id="btn-open-incidents" class="btn btn-secondary btn-block">
+      Open Emerging Incidents
     </button>
     <div id="incident-panel" class="incident-panel hidden"></div>
 
@@ -68,8 +61,17 @@
           </button>
         </div>
       </div>
+      <nav class="app-nav" aria-label="Primary">
+        <button type="button" class="nav-btn active" data-view="resolve" id="nav-resolve">
+          Agent Resolve
+        </button>
+        <button type="button" class="nav-btn" data-view="incidents" id="nav-incidents">
+          Emerging Incidents
+        </button>
+      </nav>
     </header>
 
+    <div id="view-resolve" class="view-panel">
     <div class="grid">
       <section class="panel">
         <h2>New Ticket Query</h2>
@@ -240,6 +242,48 @@
 
         <div id="loading" class="loading hidden">Running agent pipeline…</div>
         <div id="error-banner" class="error-banner hidden"></div>
+      </section>
+    </div>
+    </div><!-- /view-resolve -->
+
+    <div id="view-incidents" class="view-panel hidden">
+      <section class="panel incidents-ops">
+        <div class="incidents-header">
+          <div>
+            <h2>Emerging Incidents</h2>
+            <p class="muted">
+              Live last-24h semantic clustering from <code>analytics/clustering.py</code>
+              (DBSCAN / K-Means / greedy). Dense duplicate bursts raise major-incident alerts.
+            </p>
+          </div>
+          <div class="incidents-controls">
+            <label class="field-label" for="cluster-method">Clustering method</label>
+            <select id="cluster-method">
+              <option value="dbscan">dbscan</option>
+              <option value="kmeans">kmeans</option>
+              <option value="greedy">greedy</option>
+            </select>
+            <button type="button" id="btn-incident-scan" class="btn btn-primary">
+              Refresh scan
+            </button>
+          </div>
+        </div>
+
+        <div id="incident-summary" class="incident-summary muted">
+          Open this page or click Refresh to analyze recent tickets.
+        </div>
+        <div id="incident-metrics" class="incident-metrics"></div>
+        <div id="incident-banners" class="incident-banners"></div>
+
+        <h3>Cluster alerts</h3>
+        <div id="incident-clusters" class="incident-clusters">
+          <p class="muted">No scan yet.</p>
+        </div>
+
+        <h3>Hourly burst alerts</h3>
+        <div id="incident-bursts" class="incident-clusters">
+          <p class="muted">No scan yet.</p>
+        </div>
       </section>
     </div>
   </main>

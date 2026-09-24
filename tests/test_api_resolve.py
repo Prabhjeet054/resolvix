@@ -115,3 +115,45 @@ def test_frontend_index_served():
     assert resp.status_code == 200
     assert "text/html" in resp.headers.get("content-type", "")
     assert b"Resolvix" in resp.content
+    assert b"Emerging Incidents" in resp.content
+    assert b"incident-clusters" in resp.content
+
+
+def test_incidents_last_24h_includes_ticket_links():
+    fake_report = {
+        "status": "ok",
+        "tickets_analyzed": 12,
+        "method": "dbscan",
+        "similarity_threshold": 0.88,
+        "min_cluster_size": 5,
+        "alerts": [
+            {
+                "cluster_id": 0,
+                "ticket_ids": [101, 102, 103, 104, 105],
+                "size": 5,
+                "avg_similarity": 0.93,
+                "message": "Emerging Major Incident Alert: 5 tickets",
+                "method": "dbscan",
+                "window_hours": None,
+                "sample_descriptions": ["password reset failed"],
+            }
+        ],
+        "hourly_burst_alerts": [],
+        "message": "Analyzed 12 tickets; 1 cluster alert(s), 0 hourly burst alert(s).",
+    }
+    with patch("analytics.clustering.analyze_last_24h", return_value=fake_report):
+        resp = client.get(
+            "/api/v1/incidents/last-24h",
+            params={"method": "dbscan", "hours": 24},
+        )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["tickets_analyzed"] == 12
+    assert body["hours"] == 24
+    assert body["alerts"][0]["ticket_links"] == [
+        {"ticket_id": 101, "href": "#ticket-101"},
+        {"ticket_id": 102, "href": "#ticket-102"},
+        {"ticket_id": 103, "href": "#ticket-103"},
+        {"ticket_id": 104, "href": "#ticket-104"},
+        {"ticket_id": 105, "href": "#ticket-105"},
+    ]

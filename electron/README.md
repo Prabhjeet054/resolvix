@@ -1,6 +1,6 @@
 # Resolvix Desktop (Electron)
 
-Downloadable desktop shell for Resolvix. Electron starts the local Python FastAPI backend and loads the **same** shared UI from [`../frontend/`](../frontend/) — including light/dark theme, resolution confidence, and HITL auto-escalate (queue / on-call from `agent/escalation.py`). There is no separate Electron UI to keep in sync.
+Downloadable desktop shell for Resolvix. Electron starts the local Python FastAPI backend and loads the **same** shared UI from [`../frontend/`](../frontend/) — including light/dark theme, resolution confidence, HITL auto-escalate (queue / on-call from `agent/escalation.py`), and the **Emerging Incidents** ops dashboard (`analytics/clustering.py`). There is no separate Electron UI to keep in sync.
 
 ## Prerequisites
 
@@ -35,6 +35,7 @@ Electron will:
 | `RESOLVIX_ROOT` | Absolute path to the Resolvix repo (default: parent of `electron/`) |
 | `RESOLVIX_PYTHON` | Python executable (default: `.venv/bin/python` or `.venv\Scripts\python.exe`) |
 | `RESOLVIX_PORT` | Backend port (default: `8080`) |
+| `RESOLVIX_VIEW` | Optional startup view: `incidents` opens Emerging Incidents (`#incidents`) |
 
 ## Web-only (same UI, no Electron)
 
@@ -44,7 +45,7 @@ source .venv/bin/activate
 uvicorn api.main:app --host 127.0.0.1 --port 8080
 ```
 
-Open http://127.0.0.1:8080 — identical frontend to the desktop window (confidence panel, theme toggle, escalation routing).
+Open http://127.0.0.1:8080 — identical frontend to the desktop window (confidence panel, theme toggle, escalation routing, **Emerging Incidents** ops dashboard).
 
 Electron clears its HTTP cache on each launch so `frontend/` changes (CSS/JS) appear without rebuilding the shell.
 

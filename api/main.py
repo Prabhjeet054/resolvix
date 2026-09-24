@@ -314,12 +314,31 @@ def create_ticket(payload: FileTicketRequest) -> FileTicketResponse:
 @app.get("/api/v1/incidents/last-24h")
 def incidents_last_24h(
     method: Literal["dbscan", "kmeans", "greedy"] = Query(default="dbscan"),
+    hours: float = Query(default=24.0, ge=1.0, le=168.0),
+    min_cluster_size: int = Query(default=5, ge=2, le=50),
 ) -> dict[str, Any]:
-    """Semantic outage / duplicate scan over recent tickets."""
+    """Semantic outage / duplicate scan over recent tickets (Incident Ops)."""
     try:
         from analytics.clustering import analyze_last_24h
 
-        return analyze_last_24h(method=method)
+        report = analyze_last_24h(
+            hours=hours,
+            min_cluster_size=min_cluster_size,
+            method=method,
+        )
+        # Stable deep-link targets for UI ticket chips
+        for alert in report.get("alerts") or []:
+            alert["ticket_links"] = [
+                {"ticket_id": tid, "href": f"#ticket-{tid}"}
+                for tid in (alert.get("ticket_ids") or [])
+            ]
+        for alert in report.get("hourly_burst_alerts") or []:
+            alert["ticket_links"] = [
+                {"ticket_id": tid, "href": f"#ticket-{tid}"}
+                for tid in (alert.get("ticket_ids") or [])
+            ]
+        report["hours"] = hours
+        return report
     except Exception as exc:
         raise HTTPException(
             status_code=500, detail=f"incident scan failed: {exc}"

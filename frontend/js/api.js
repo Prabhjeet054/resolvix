@@ -45,8 +45,14 @@
         body: JSON.stringify(payload),
       });
     },
-    incidentsLast24h(method) {
-      const q = method ? `?method=${encodeURIComponent(method)}` : "";
+    incidentsLast24h(method, hours = 24, minClusterSize = 5) {
+      const params = new URLSearchParams();
+      if (method) params.set("method", method);
+      if (hours != null) params.set("hours", String(hours));
+      if (minClusterSize != null) {
+        params.set("min_cluster_size", String(minClusterSize));
+      }
+      const q = params.toString() ? `?${params.toString()}` : "";
       return request(`/api/v1/incidents/last-24h${q}`);
     },
   };

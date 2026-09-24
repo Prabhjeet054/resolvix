@@ -1,7 +1,8 @@
 /**
  * Resolvix Electron main process.
  * Spawns the Python FastAPI backend, waits for /health, then loads the shared UI
- * from frontend/ (same assets as the browser — including confidence + auto-escalate).
+ * from frontend/ (same assets as the browser — confidence, auto-escalate, and
+ * Emerging Incidents / Incident Ops).
  */
 const { app, BrowserWindow, shell, session } = require("electron");
 const path = require("path");
@@ -45,7 +46,8 @@ function createSplash(message) {
 }
 
 async function loadSharedUi(url) {
-  // Drop HTTP cache so Electron always mirrors the latest frontend/ assets.
+  // Drop HTTP cache so Electron always mirrors the latest frontend/ assets
+  // (Emerging Incidents, confidence panel, theme CSS, etc.).
   try {
     await session.defaultSession.clearCache();
   } catch {
@@ -54,10 +56,32 @@ async function loadSharedUi(url) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   mainWindow.setSize(1280, 860);
   mainWindow.center();
-  await mainWindow.loadURL(url);
+  // Prefer Incident Ops when launched with RESOLVIX_VIEW=incidents
+  const view = (process.env.RESOLVIX_VIEW || "").toLowerCase();
+  const target =
+    view === "incidents" ? `${url.replace(/\/$/, "")}/#incidents` : url;
+  await mainWindow.loadURL(target);
+  mainWindow.setTitle(
+    view === "incidents"
+      ? "Resolvix — Emerging Incidents"
+      : "Resolvix — Agentic RAG"
+  );
+
+  // Stay on the local API origin (shared UI); open anything else externally.
+  const apiOrigin = new URL(url).origin;
   mainWindow.webContents.setWindowOpenHandler(({ url: openUrl }) => {
     shell.openExternal(openUrl);
     return { action: "deny" };
+  });
+  mainWindow.webContents.on("will-navigate", (event, navUrl) => {
+    try {
+      if (new URL(navUrl).origin !== apiOrigin) {
+        event.preventDefault();
+        shell.openExternal(navUrl);
+      }
+    } catch {
+      event.preventDefault();
+    }
   });
 }
 

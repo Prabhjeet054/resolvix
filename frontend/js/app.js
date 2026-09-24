@@ -41,6 +41,8 @@
     originalQuery: "",
     feedback: null,
     langView: "en",
+    view: "resolve",
+    incidentReport: null,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -377,6 +379,204 @@
     syncButtons(currentTheme());
   }
 
+  function setView(view, opts = {}) {
+    const next = view === "incidents" ? "incidents" : "resolve";
+    state.view = next;
+    show($("view-resolve"), next === "resolve");
+    show($("view-incidents"), next === "incidents");
+    document.querySelectorAll(".nav-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.getAttribute("data-view") === next);
+    });
+    // Keep URL hash in sync so Electron / browser deep-links work the same.
+    if (!opts.skipHash) {
+      const target = next === "incidents" ? "#incidents" : "#resolve";
+      if (window.location.hash !== target) {
+        history.replaceState(null, "", target);
+      }
+    }
+    if (window.resolvixDesktop && window.resolvixDesktop.isDesktop) {
+      document.title =
+        next === "incidents"
+          ? "Resolvix — Emerging Incidents"
+          : "Resolvix — Agentic RAG";
+    }
+    if (next === "incidents" && !state.incidentReport) {
+      runIncidentScan();
+    }
+  }
+
+  function applyHashRoute() {
+    const hash = (window.location.hash || "").toLowerCase();
+    if (hash === "#incidents" || hash.startsWith("#cluster-")) {
+      setView("incidents", { skipHash: true });
+      return;
+    }
+    if (hash.startsWith("#ticket-")) {
+      // Ticket deep-links land on Resolve; chip click handler fills the query.
+      setView("resolve", { skipHash: true });
+      return;
+    }
+    setView("resolve", { skipHash: true });
+  }
+
+  function ticketChipsHtml(alert) {
+    const ids = alert.ticket_ids || [];
+    const samples = alert.sample_descriptions || [];
+    if (!ids.length) return `<span class="muted">No ticket IDs</span>`;
+    return (
+      `<div class="ticket-chips">` +
+      ids
+        .map((tid, idx) => {
+          const sample = samples[idx] || samples[0] || "";
+          return (
+            `<a class="ticket-chip" href="#ticket-${escapeHtml(String(tid))}" ` +
+            `data-ticket-id="${escapeHtml(String(tid))}" ` +
+            `data-sample="${escapeHtml(sample)}" ` +
+            `title="Open in Agent Resolve">#${escapeHtml(String(tid))}</a>`
+          );
+        })
+        .join("") +
+      `</div>`
+    );
+  }
+
+  function renderAlertCard(alert, kind) {
+    const sim = Number(alert.avg_similarity || 0) * 100;
+    const size = alert.size || (alert.ticket_ids || []).length;
+    const windowLabel =
+      alert.window_hours != null ? ` · ${alert.window_hours}h window` : "";
+    const samples = (alert.sample_descriptions || []).slice(0, 3);
+    const sampleHtml = samples.length
+      ? `<ul class="sample-list">${samples
+          .map((s) => `<li>${escapeHtml(s)}</li>`)
+          .join("")}</ul>`
+      : "";
+    return (
+      `<article class="cluster-card ${kind === "burst" ? "burst" : ""}" ` +
+      `id="cluster-${escapeHtml(String(alert.cluster_id))}">` +
+      `<h4>${kind === "burst" ? "Hourly burst" : "Cluster"} #${escapeHtml(
+        String(alert.cluster_id)
+      )}</h4>` +
+      `<p class="cluster-meta">` +
+      `${size} tickets · avg similarity ${sim.toFixed(1)}% · ` +
+      `method ${escapeHtml(alert.method || "—")}${windowLabel}` +
+      `</p>` +
+      `<p>${escapeHtml(alert.message || "")}</p>` +
+      `<div class="cluster-meta">Ticket IDs</div>` +
+      ticketChipsHtml(alert) +
+      sampleHtml +
+      `</article>`
+    );
+  }
+
+  function renderIncidentDashboard(report) {
+    state.incidentReport = report;
+    const clusters = report.alerts || [];
+    const bursts = report.hourly_burst_alerts || [];
+    const analyzed = report.tickets_analyzed || 0;
+
+    $("incident-summary").textContent =
+      report.message ||
+      `Analyzed ${analyzed} tickets in the last ${report.hours || 24}h.`;
+
+    $("incident-metrics").innerHTML =
+      `<div class="incident-metric"><span class="metric-label">Tickets analyzed</span>` +
+      `<span class="metric-value">${analyzed}</span></div>` +
+      `<div class="incident-metric"><span class="metric-label">Cluster alerts</span>` +
+      `<span class="metric-value">${clusters.length}</span></div>` +
+      `<div class="incident-metric"><span class="metric-label">Hourly bursts</span>` +
+      `<span class="metric-value">${bursts.length}</span></div>` +
+      `<div class="incident-metric"><span class="metric-label">Method</span>` +
+      `<span class="metric-value">${escapeHtml(report.method || "—")}</span></div>`;
+
+    const banners = $("incident-banners");
+    banners.innerHTML = "";
+    if (bursts.length) {
+      bursts.slice(0, 3).forEach((a) => {
+        const el = document.createElement("div");
+        el.className = "alert-banner critical";
+        el.innerHTML =
+          `<strong>Emerging Major Incident (burst)</strong> — ` +
+          `${escapeHtml(a.message || "")}`;
+        banners.appendChild(el);
+      });
+    }
+    if (clusters.length) {
+      clusters.slice(0, 3).forEach((a) => {
+        const el = document.createElement("div");
+        el.className = "alert-banner warning";
+        el.innerHTML =
+          `<strong>Cluster alert #${escapeHtml(String(a.cluster_id))}</strong> — ` +
+          `${escapeHtml(a.message || "")}`;
+        banners.appendChild(el);
+      });
+    }
+    if (!bursts.length && !clusters.length) {
+      banners.innerHTML =
+        `<div class="alert-banner ok">No emerging major incidents detected in the analysis window.</div>`;
+    }
+
+    const clusterHost = $("incident-clusters");
+    clusterHost.innerHTML = clusters.length
+      ? clusters.map((a) => renderAlertCard(a, "cluster")).join("")
+      : `<p class="muted">No dense clusters (≥ min size) in the last-24h window.</p>`;
+
+    const burstHost = $("incident-bursts");
+    burstHost.innerHTML = bursts.length
+      ? bursts.map((a) => renderAlertCard(a, "burst")).join("")
+      : `<p class="muted">No hourly burst alerts.</p>`;
+
+    // Sidebar glance
+    const side = $("incident-panel");
+    if (bursts.length) {
+      side.className = "incident-panel alert";
+      side.textContent = bursts[0].message || report.message;
+    } else if (clusters.length) {
+      side.className = "incident-panel warn";
+      side.textContent = clusters[0].message || report.message;
+    } else {
+      side.className = "incident-panel";
+      side.textContent = report.message || "No emerging major incidents detected.";
+    }
+
+    // Wire ticket deep-links → Agent Resolve
+    document.querySelectorAll(".ticket-chip").forEach((chip) => {
+      chip.addEventListener("click", (e) => {
+        e.preventDefault();
+        const tid = chip.getAttribute("data-ticket-id");
+        const sample = chip.getAttribute("data-sample") || "";
+        const query =
+          sample ||
+          `Investigate related support ticket #${tid} from the emerging-incident cluster.`;
+        $("query-text").value = query;
+        setView("resolve");
+        $("query-text").focus();
+      });
+    });
+  }
+
+  async function runIncidentScan() {
+    const summary = $("incident-summary");
+    const side = $("incident-panel");
+    summary.textContent = "Clustering recent ticket embeddings…";
+    side.className = "incident-panel";
+    side.textContent = "Scanning…";
+    $("incident-banners").innerHTML = "";
+    $("incident-clusters").innerHTML = `<p class="muted">Scanning…</p>`;
+    $("incident-bursts").innerHTML = `<p class="muted">Scanning…</p>`;
+    try {
+      const method = ($("cluster-method") && $("cluster-method").value) || "dbscan";
+      const report = await ResolvixAPI.incidentsLast24h(method);
+      renderIncidentDashboard(report);
+    } catch (err) {
+      summary.textContent = err.message;
+      side.className = "incident-panel alert";
+      side.textContent = err.message;
+      $("incident-banners").innerHTML =
+        `<div class="alert-banner critical">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
   function wireEvents() {
     $("model-select").addEventListener("change", (e) => {
       state.model = e.target.value;
@@ -417,7 +617,22 @@
       $("btn-clear-query").click();
       $("incident-panel").className = "incident-panel hidden";
       $("incident-panel").textContent = "";
+      state.incidentReport = null;
     });
+
+    document.querySelectorAll(".nav-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setView(btn.getAttribute("data-view"));
+      });
+    });
+
+    const openIncidents = $("btn-open-incidents");
+    if (openIncidents) {
+      openIncidents.addEventListener("click", () => {
+        state.incidentReport = null;
+        setView("incidents");
+      });
+    }
 
     document.querySelectorAll('input[name="lang-view"]').forEach((input) => {
       input.addEventListener("change", (e) => {
@@ -468,35 +683,14 @@
       }
     });
 
-    $("btn-incident-scan").addEventListener("click", async () => {
-      const panel = $("incident-panel");
-      panel.className = "incident-panel";
-      panel.textContent = "Clustering recent ticket embeddings…";
-      try {
-        const report = await ResolvixAPI.incidentsLast24h($("cluster-method").value);
-        const bursts = report.hourly_burst_alerts || [];
-        const clusters = report.alerts || [];
-        if (bursts.length) {
-          panel.className = "incident-panel alert";
-          panel.textContent = bursts[0].message || report.message || "Burst alert";
-        } else if (clusters.length) {
-          panel.className = "incident-panel warn";
-          panel.textContent = clusters[0].message || report.message || "Cluster alert";
-        } else {
-          panel.className = "incident-panel";
-          panel.textContent =
-            report.message || "No emerging major incidents detected.";
-        }
-      } catch (err) {
-        panel.className = "incident-panel alert";
-        panel.textContent = err.message;
-      }
-    });
+    $("btn-incident-scan").addEventListener("click", () => runIncidentScan());
   }
 
   document.addEventListener("DOMContentLoaded", () => {
     wireThemeToggle();
     wireEvents();
+    applyHashRoute();
+    window.addEventListener("hashchange", applyHashRoute);
     refreshStatus();
     setInterval(refreshStatus, 15000);
   });

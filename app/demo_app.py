@@ -254,6 +254,132 @@ def render_confidence_escalation(result: AgentResult) -> None:
         st.success(summary)
 
 
+def render_emerging_incidents_page() -> None:
+    """Incident Ops dashboard wired to analytics.clustering.analyze_last_24h."""
+    st.subheader("Emerging Incidents")
+    st.caption(
+        "Live last-24h semantic clustering from `analytics/clustering.py` "
+        "(DBSCAN / K-Means / greedy). Dense duplicate bursts raise major-incident alerts."
+    )
+
+    c1, c2, c3 = st.columns([1.2, 1, 1])
+    with c1:
+        method = st.selectbox(
+            "Clustering method",
+            options=["dbscan", "kmeans", "greedy"],
+            index=0,
+            key="ops_cluster_method",
+        )
+    with c2:
+        hours = st.number_input(
+            "Window (hours)",
+            min_value=1.0,
+            max_value=168.0,
+            value=24.0,
+            step=1.0,
+            key="ops_hours",
+        )
+    with c3:
+        min_size = st.number_input(
+            "Min cluster size",
+            min_value=2,
+            max_value=50,
+            value=5,
+            step=1,
+            key="ops_min_size",
+        )
+
+    scan = st.button("Refresh scan", type="primary")
+    if scan or st.session_state.get("incident_report") is None:
+        with st.spinner("Clustering recent ticket embeddings…"):
+            from analytics.clustering import analyze_last_24h
+
+            st.session_state["incident_report"] = analyze_last_24h(
+                hours=float(hours),
+                min_cluster_size=int(min_size),
+                method=method,  # type: ignore[arg-type]
+            )
+
+    report = st.session_state.get("incident_report") or {}
+    clusters = report.get("alerts") or []
+    bursts = report.get("hourly_burst_alerts") or []
+    analyzed = int(report.get("tickets_analyzed") or 0)
+
+    st.write(report.get("message") or "No scan results.")
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Tickets analyzed", analyzed)
+    m2.metric("Cluster alerts", len(clusters))
+    m3.metric("Hourly bursts", len(bursts))
+    m4.metric("Method", str(report.get("method") or method))
+
+    # Alert banners
+    if bursts:
+        for alert in bursts[:5]:
+            st.error(
+                f"**Emerging Major Incident (burst)** — {alert.get('message', '')}"
+            )
+    if clusters:
+        for alert in clusters[:5]:
+            st.warning(
+                f"**Cluster alert #{alert.get('cluster_id')}** — {alert.get('message', '')}"
+            )
+    if not bursts and not clusters:
+        st.success("No emerging major incidents detected in the analysis window.")
+
+    st.markdown("### Cluster alerts")
+    if not clusters:
+        st.info("No dense clusters (≥ min size) in the analysis window.")
+    else:
+        for alert in clusters:
+            _render_incident_alert_card(alert, kind="cluster")
+
+    st.markdown("### Hourly burst alerts")
+    if not bursts:
+        st.info("No hourly burst alerts.")
+    else:
+        for alert in bursts:
+            _render_incident_alert_card(alert, kind="burst")
+
+
+def _render_incident_alert_card(alert: dict, kind: str = "cluster") -> None:
+    ids = list(alert.get("ticket_ids") or [])
+    samples = list(alert.get("sample_descriptions") or [])
+    sim_pct = float(alert.get("avg_similarity") or 0.0) * 100.0
+    size = int(alert.get("size") or len(ids))
+    title = "Hourly burst" if kind == "burst" else "Cluster"
+    with st.container(border=True):
+        st.markdown(
+            f"**{title} #{alert.get('cluster_id')}** · {size} tickets · "
+            f"avg similarity **{sim_pct:.1f}%** · method `{alert.get('method', '—')}`"
+        )
+        st.write(alert.get("message") or "")
+        st.markdown("**Ticket IDs**")
+        if not ids:
+            st.caption("No ticket IDs")
+        else:
+            cols = st.columns(min(6, max(1, len(ids))))
+            for idx, tid in enumerate(ids):
+                sample = samples[idx] if idx < len(samples) else (samples[0] if samples else "")
+                with cols[idx % len(cols)]:
+                    if st.button(
+                        f"#{tid}",
+                        key=f"ops_ticket_{kind}_{alert.get('cluster_id')}_{tid}",
+                        use_container_width=True,
+                        help="Open in Agent Resolve",
+                    ):
+                        st.session_state["selected_query"] = sample or (
+                            f"Investigate related support ticket #{tid} "
+                            "from the emerging-incident cluster."
+                        )
+                        st.session_state["ui_page"] = "Agent Resolve"
+                        st.rerun()
+        if samples:
+            with st.expander("Sample descriptions", expanded=False):
+                for text in samples[:5]:
+                    st.write(f"- {text}")
+
+
 def main() -> None:
     st.title("Resolvix — Multilingual Agentic RAG")
     st.caption(
@@ -273,6 +399,10 @@ def main() -> None:
         st.session_state["selected_query"] = ""
     if "feedback" not in st.session_state:
         st.session_state["feedback"] = None
+    if "ui_page" not in st.session_state:
+        st.session_state["ui_page"] = "Agent Resolve"
+    if "incident_report" not in st.session_state:
+        st.session_state["incident_report"] = None
 
     # Sidebar diagnostics
     with st.sidebar:
@@ -299,20 +429,12 @@ def main() -> None:
         )
 
         st.divider()
-        st.subheader("Roadmap")
-        st.caption("Multi-turn refine · Semantic incident clustering · HITL confidence + auto-escalate")
-        cluster_method = st.selectbox(
-            "Incident clustering method",
-            options=["dbscan", "kmeans", "greedy"],
-            index=0,
-            key="cluster_method",
-        )
-        if st.button("Run last-24h incident scan", use_container_width=True):
-            with st.spinner("Clustering recent ticket embeddings…"):
-                from analytics.clustering import analyze_last_24h
-
-                report = analyze_last_24h(method=cluster_method)  # type: ignore[arg-type]
-            st.session_state["incident_report"] = report
+        st.subheader("Incident Ops")
+        st.caption("Last-24h semantic clusters · burst alerts · ticket deep-links")
+        if st.button("Open Emerging Incidents", use_container_width=True):
+            st.session_state["ui_page"] = "Emerging Incidents"
+            st.session_state["incident_report"] = None
+            st.rerun()
         report = st.session_state.get("incident_report")
         if report:
             st.caption(report.get("message", ""))
@@ -330,6 +452,22 @@ def main() -> None:
             st.session_state["feedback"] = None
             st.session_state["incident_report"] = None
             st.rerun()
+
+    page = st.radio(
+        "Workspace",
+        options=["Agent Resolve", "Emerging Incidents"],
+        horizontal=True,
+        key="ui_page",
+        label_visibility="collapsed",
+    )
+
+    if page == "Emerging Incidents":
+        try:
+            load_embedding_model()
+        except Exception as exc:
+            st.warning(f"Embedding model not ready yet: {exc}")
+        render_emerging_incidents_page()
+        return
 
     try:
         load_embedding_model()
