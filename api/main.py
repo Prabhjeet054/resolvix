@@ -103,6 +103,8 @@ class ResolveResponse(BaseModel):
     original_query: str | None = None
     pii_redacted: bool = False
     pii_counts: dict[str, int] = Field(default_factory=dict)
+    groundedness_score: float | None = None
+    groundedness: dict[str, Any] | None = None
 
 
 class FileTicketRequest(BaseModel):
@@ -266,6 +268,12 @@ def resolve_ticket(payload: ResolveRequest) -> ResolveResponse:
         original_query=result.original_query,
         pii_redacted=bool(result.pii_redacted),
         pii_counts=dict(result.pii_counts or {}),
+        groundedness_score=(
+            float(result.groundedness_score)
+            if result.groundedness_score is not None
+            else None
+        ),
+        groundedness=result.groundedness,
     )
 
 
@@ -302,6 +310,8 @@ def resolve_schema() -> dict[str, Any]:
             "original_query",
             "pii_redacted",
             "pii_counts",
+            "groundedness_score",
+            "groundedness",
             "trace_steps",
             "live_sql",
             "customer_id",

@@ -199,10 +199,29 @@
     $("confidence-priority").textContent = result.priority || "—";
     $("confidence-bar").style.width = `${Math.min(100, Math.max(0, simPct))}%`;
 
+    const g = result.groundedness || {};
+    const gScore =
+      result.groundedness_score != null
+        ? Number(result.groundedness_score)
+        : g.score != null
+          ? Number(g.score)
+          : null;
+    const gEl = $("confidence-groundedness");
+    if (gEl) {
+      if (gScore == null) {
+        gEl.textContent = "—";
+      } else {
+        const method = g.method ? ` · ${g.method}` : "";
+        const fail = g.escalate ? " · fail" : "";
+        gEl.textContent = `${(gScore * 100).toFixed(0)}%${method}${fail}`;
+      }
+    }
+
     const hint = panel.querySelector(".confidence-hint");
     if (hint) {
       hint.textContent =
-        `Escalate when top similarity < ${floorPct}% or priority is CRITICAL.`;
+        `Escalate when top similarity < ${floorPct}%, priority is CRITICAL, ` +
+        `or groundedness self-check fails (every step must cite a retrieved ticket).`;
     }
 
     const escBox = $("escalation-box");
@@ -262,6 +281,16 @@
         .join(", ");
       $("result-meta").textContent +=
         ` · PII redacted (${parts || "yes"})`;
+    }
+    if (result.groundedness_score != null || result.groundedness) {
+      const g = result.groundedness || {};
+      const gs =
+        result.groundedness_score != null
+          ? Number(result.groundedness_score)
+          : Number(g.score || 0);
+      $("result-meta").textContent +=
+        ` · Groundedness: ${(gs * 100).toFixed(0)}%` +
+        (g.escalate ? " (escalate)" : "");
     }
 
     const refineStatus = $("refine-status");

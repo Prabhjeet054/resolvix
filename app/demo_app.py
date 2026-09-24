@@ -207,7 +207,7 @@ def render_result_card(rank: int, match: dict) -> None:
 
 
 def render_confidence_escalation(result: AgentResult) -> None:
-    """Surface top similarity %, auto-escalate rules, and HITL routing."""
+    """Surface top similarity %, groundedness, auto-escalate rules, and HITL routing."""
     esc = result.escalation or {}
     sim_pct = float(esc.get("top_similarity", result.confidence) or 0.0) * 100.0
     threshold_pct = SIMILARITY_ESCALATION_THRESHOLD * 100.0
@@ -215,6 +215,13 @@ def render_confidence_escalation(result: AgentResult) -> None:
     reasons = list(esc.get("reasons") or [])
     if not reasons and result.escalation_hint:
         reasons = [result.escalation_hint]
+
+    ground = result.groundedness or {}
+    g_score = result.groundedness_score
+    if g_score is None and ground.get("score") is not None:
+        g_score = float(ground["score"])
+    g_pct = float(g_score) * 100.0 if g_score is not None else None
+    g_method = ground.get("method") or "—"
 
     panel_class = "confidence-panel escalate" if required else "confidence-panel ok"
     flag_html = (
@@ -231,18 +238,26 @@ def render_confidence_escalation(result: AgentResult) -> None:
         unsafe_allow_html=True,
     )
 
-    m1, m2, m3 = st.columns(3)
+    m1, m2, m3, m4 = st.columns(4)
     m1.metric("Top similarity", f"{sim_pct:.1f}%")
     m2.metric("Confidence floor", f"{threshold_pct:.0f}%")
     m3.metric("Priority", result.classified_priority)
+    m4.metric(
+        "Groundedness",
+        f"{g_pct:.0f}%" if g_pct is not None else "—",
+        delta=f"{g_method}" + (" · fail" if ground.get("escalate") else ""),
+        delta_color="inverse" if ground.get("escalate") else "off",
+    )
 
     # Visual confidence bar (0–100% of top match similarity)
     st.progress(min(1.0, max(0.0, sim_pct / 100.0)))
     st.caption(
-        f"Escalate when top similarity **&lt; {threshold_pct:.0f}%** "
-        f"or priority is **CRITICAL** "
-        f"(rules from `agent/escalation.py`)."
+        f"Escalate when top similarity **&lt; {threshold_pct:.0f}%**, "
+        f"priority is **CRITICAL**, or **groundedness self-check fails** "
+        f"(every step must cite a retrieved ticket)."
     )
+    if ground.get("summary"):
+        st.caption(f"Self-check: {ground['summary']}")
 
     if required:
         st.error("Human-in-the-loop escalation recommended — do not auto-close.")

@@ -1,8 +1,9 @@
 """Human-in-the-loop smart escalation (roadmap Feature C).
 
 Flags ``ESCALATION_REQUIRED = TRUE`` when the top similarity match is below
-65% **or** classified priority is CRITICAL, and recommends the tier-2/3
-department plus an on-call specialist for the category.
+65%, classified priority is CRITICAL, **or** the groundedness self-check fails
+(not every resolution step cites a retrieved ticket), and recommends the
+tier-2/3 department plus an on-call specialist for the category.
 """
 
 from __future__ import annotations
@@ -79,12 +80,17 @@ def evaluate_escalation(
     priority: str,
     category: str,
     threshold: float = SIMILARITY_ESCALATION_THRESHOLD,
+    groundedness_ok: bool | None = None,
+    groundedness_score: float | None = None,
+    groundedness_detail: str | None = None,
 ) -> EscalationDecision:
     """Decide whether human escalation is required and whom to page.
 
     Rules:
       - ESCALATION_REQUIRED = TRUE if top similarity < threshold (default 65%)
       - ESCALATION_REQUIRED = TRUE if priority == CRITICAL
+      - ESCALATION_REQUIRED = TRUE if groundedness self-check fails
+        (not every step cites a retrieved ticket)
     """
     priority_u = (priority or "MEDIUM").upper()
     category_u = (category or "GENERAL").upper()
@@ -97,6 +103,19 @@ def evaluate_escalation(
         )
     if priority_u == "CRITICAL":
         reasons.append("classified priority is CRITICAL")
+    if groundedness_ok is False:
+        if groundedness_detail:
+            reasons.append(groundedness_detail)
+        else:
+            g_pct = (
+                f"{float(groundedness_score) * 100:.0f}%"
+                if groundedness_score is not None
+                else "n/a"
+            )
+            reasons.append(
+                f"groundedness self-check failed (score {g_pct}) — "
+                "not every step cites a retrieved ticket"
+            )
 
     required = len(reasons) > 0
     routing = recommend_routing(category_u) if required else {
@@ -113,10 +132,13 @@ def evaluate_escalation(
             f"(queue: {routing['queue']}) · reasons: {'; '.join(reasons)}"
         )
     else:
+        g_note = ""
+        if groundedness_ok is True and groundedness_score is not None:
+            g_note = f", groundedness={float(groundedness_score) * 100:.0f}%"
         summary = (
             f"ESCALATION_REQUIRED = FALSE "
             f"(top similarity {sim * 100:.1f}% ≥ {threshold * 100:.0f}%, "
-            f"priority={priority_u})"
+            f"priority={priority_u}{g_note})"
         )
 
     return EscalationDecision(

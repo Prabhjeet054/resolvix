@@ -79,6 +79,28 @@ Historical evidence (retrieved tickets):
 {evidence}
 """
 
+GROUNDEDNESS_PROMPT = """You are the Resolvix groundedness auditor (second pass).
+
+Question: Did EVERY troubleshooting step in the resolution cite at least one of the
+allowed retrieved ticket IDs? Steps that invent ticket IDs not in the allowed list
+fail. Meta lines (headings, preambles) without actions do not count as steps.
+
+Allowed retrieved ticket IDs: {allowed_ids}
+
+Evidence briefly:
+{evidence}
+
+Resolution to audit:
+{resolution}
+
+Return ONLY valid JSON (no markdown fences):
+{{"every_step_cited":true|false,"score":0.0,"step_count":0,"cited_step_count":0,"ungrounded_steps":["brief quote"],"cited_ticket_ids":[103],"invented_ticket_ids":[],"reasoning":"brief"}}
+
+Scoring:
+- score = cited_step_count / step_count (1.0 only if every actionable step cites an allowed ID)
+- every_step_cited must be false if score < 1.0 or invented_ticket_ids is non-empty
+"""
+
 
 def format_evidence(similar_tickets: list[dict]) -> str:
     """Render top matched tickets into a compact evidence block for the LLM."""

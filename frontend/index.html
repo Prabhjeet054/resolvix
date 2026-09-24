@@ -204,10 +204,15 @@
                 <span class="metric-label">Priority</span>
                 <span id="confidence-priority" class="metric-value">—</span>
               </div>
+              <div>
+                <span class="metric-label">Groundedness</span>
+                <span id="confidence-groundedness" class="metric-value">—</span>
+              </div>
             </div>
             <div class="progress confidence-bar"><span id="confidence-bar"></span></div>
             <p class="muted confidence-hint">
-              Escalate when top similarity &lt; 65% or priority is CRITICAL.
+              Escalate when top similarity &lt; 65%, priority is CRITICAL, or
+              groundedness self-check fails (every step must cite a retrieved ticket).
             </p>
             <div id="escalation-box" class="escalation-detail"></div>
           </div>

@@ -9,6 +9,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from agent.escalation import evaluate_escalation
+from agent.groundedness import check_groundedness
 from agent.llm_client import OllamaClient
 from agent.prompts import (
     CLASSIFICATION_PROMPT,
@@ -55,6 +56,8 @@ class AgentResult:
     original_query: str | None = None
     pii_redacted: bool = False
     pii_counts: dict[str, int] = field(default_factory=dict)
+    groundedness_score: float | None = None
+    groundedness: dict | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -123,22 +126,31 @@ def _extractive_resolution(query: str, tickets: list[dict]) -> str:
         "",
         "Based on the closest historical tickets:",
     ]
+    ticket_ids: list[int] = []
     for t in tickets:
         pct = t.get("similarity_pct")
         if pct is None:
             pct = round(float(t.get("similarity_score") or 0) * 100.0, 1)
+        tid = t.get("ticket_id")
+        try:
+            ticket_ids.append(int(tid))
+        except (TypeError, ValueError):
+            pass
         lines.append(
-            f"- **[Ticket {t.get('ticket_id')}]** ({pct}% similar, "
+            f"- **[Ticket {tid}]** ({pct}% similar, "
             f"{t.get('category_name')}/{t.get('priority')}): "
             f"{t.get('resolution') or 'No resolution text stored.'}"
         )
+    cite = ", ".join(f"[Ticket {i}]" for i in ticket_ids) or "[Ticket ?]"
+    primary = f"[Ticket {ticket_ids[0]}]" if ticket_ids else "[Ticket ?]"
     lines.extend(
         [
             "",
             "### Recommended checklist",
-            "1. Confirm the symptom matches the cited ticket(s).",
-            "2. Apply the most relevant historical resolution steps above.",
-            "3. Verify with the customer and close or escalate if unresolved.",
+            f"1. Confirm the symptom matches the cited ticket(s): {cite}.",
+            f"2. Apply the most relevant historical resolution steps from {primary}.",
+            f"3. Verify with the customer and close or escalate if unresolved "
+            f"(evidence: {cite}).",
         ]
     )
     return "\n".join(lines)
@@ -425,7 +437,25 @@ class TicketResolverAgent:
             }
         )
 
-        # Confidence & HITL escalation (Feature C)
+        # Groundedness self-check (second LLM pass / heuristic fallback)
+        t0 = _now_ms()
+        ground = check_groundedness(
+            resolution=synthesized,
+            tickets=similar,
+            llm=self.llm if llm_ok else None,
+        )
+        trace.append(
+            {
+                "step": "groundedness_self_check",
+                "duration_ms": round(_now_ms() - t0, 1),
+                "details": (
+                    f"{ground.summary} · method={ground.method} "
+                    f"score={ground.score:.2f} escalate={ground.escalate}"
+                ),
+            }
+        )
+
+        # Confidence & HITL escalation (Feature C + groundedness)
         top_score = 0.0
         if similar:
             top_score = float(similar[0].get("similarity_score") or 0.0)
@@ -434,6 +464,9 @@ class TicketResolverAgent:
             top_similarity=confidence,
             priority=priority,
             category=category,
+            groundedness_ok=not ground.escalate,
+            groundedness_score=ground.score,
+            groundedness_detail=ground.summary if ground.escalate else None,
         )
         escalation_required = decision.ESCALATION_REQUIRED
         escalation_hint = decision.summary if escalation_required else None
@@ -468,4 +501,6 @@ class TicketResolverAgent:
             original_query=base_issue if refine_mode else clean_query,
             pii_redacted=bool(pii_totals),
             pii_counts=pii_totals,
+            groundedness_score=ground.score,
+            groundedness=ground.to_dict(),
         )
