@@ -256,6 +256,13 @@
         ? ` · Refine & Clarify (reused ${tickets.length} tickets)`
         : " · Refine & Clarify";
     }
+    if (result.pii_redacted) {
+      const parts = Object.entries(result.pii_counts || {})
+        .map(([k, v]) => `${k}:${v}`)
+        .join(", ");
+      $("result-meta").textContent +=
+        ` · PII redacted (${parts || "yes"})`;
+    }
 
     const refineStatus = $("refine-status");
     if (refineStatus) {

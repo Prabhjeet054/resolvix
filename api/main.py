@@ -101,6 +101,8 @@ class ResolveResponse(BaseModel):
     refine_mode: bool = False
     reused_prior_tickets: bool = False
     original_query: str | None = None
+    pii_redacted: bool = False
+    pii_counts: dict[str, int] = Field(default_factory=dict)
 
 
 class FileTicketRequest(BaseModel):
@@ -262,6 +264,8 @@ def resolve_ticket(payload: ResolveRequest) -> ResolveResponse:
         refine_mode=bool(result.refine_mode),
         reused_prior_tickets=bool(result.reused_prior_tickets),
         original_query=result.original_query,
+        pii_redacted=bool(result.pii_redacted),
+        pii_counts=dict(result.pii_counts or {}),
     )
 
 
@@ -296,6 +300,8 @@ def resolve_schema() -> dict[str, Any]:
             "refine_mode",
             "reused_prior_tickets",
             "original_query",
+            "pii_redacted",
+            "pii_counts",
             "trace_steps",
             "live_sql",
             "customer_id",
@@ -318,14 +324,22 @@ def create_ticket(payload: FileTicketRequest) -> FileTicketResponse:
                 filed=False,
                 message="Oracle is offline — cannot file ticket right now.",
             )
-        embedding = generate_embedding(payload.description)
+        from privacy.redact import redact_text
+
+        safe_description = redact_text(payload.description)
+        safe_resolution = (
+            redact_text(payload.resolution)
+            if payload.resolution is not None
+            else None
+        )
+        embedding = generate_embedding(safe_description)
         ticket_id = file_new_ticket(
-            description=payload.description,
+            description=safe_description,
             embedding=embedding,
             category_name=payload.category,
             priority=payload.priority,
             language_code=payload.language_code,
-            resolution=payload.resolution,
+            resolution=safe_resolution,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"file ticket failed: {exc}") from exc

@@ -64,7 +64,13 @@ class OllamaClient:
         temperature: float | None = None,
         model: str | None = None,
     ) -> str:
-        """Send a chat completion request. Returns assistant text or raises RuntimeError."""
+        """Send a chat completion request. Returns assistant text or raises RuntimeError.
+
+        Message contents are PII-redacted before leaving the process.
+        """
+        from privacy.redact import redact_chat_history
+
+        safe_messages, _counts = redact_chat_history(messages)
         temp = (
             temperature
             if temperature is not None
@@ -72,7 +78,7 @@ class OllamaClient:
         )
         payload: dict[str, Any] = {
             "model": model or self.model,
-            "messages": messages,
+            "messages": safe_messages,
             "stream": False,
             "options": {"temperature": temp},
         }

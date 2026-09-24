@@ -85,12 +85,21 @@ def format_evidence(similar_tickets: list[dict]) -> str:
     if not similar_tickets:
         return "(no similar resolved tickets found)"
 
+    from privacy.redact import redact_text
+
     blocks: list[str] = []
     for i, ticket in enumerate(similar_tickets, start=1):
         pct = ticket.get("similarity_pct")
         if pct is None:
             score = float(ticket.get("similarity_score") or 0.0)
             pct = round(score * 100.0, 1)
+        description = redact_text(str(ticket.get("description") or ""))
+        resolution = ticket.get("resolution")
+        resolution = (
+            "(none)"
+            if resolution is None
+            else redact_text(str(resolution))
+        )
         blocks.append(
             "\n".join(
                 [
@@ -99,8 +108,8 @@ def format_evidence(similar_tickets: list[dict]) -> str:
                     f"| category={ticket.get('category_name')} "
                     f"| priority={ticket.get('priority')} "
                     f"| similarity={pct}%",
-                    f"Description: {ticket.get('description')}",
-                    f"Resolution: {ticket.get('resolution') or '(none)'}",
+                    f"Description: {description}",
+                    f"Resolution: {resolution}",
                 ]
             )
         )

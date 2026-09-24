@@ -42,23 +42,26 @@ def get_model() -> SentenceTransformer:
             raise primary_error from None
 
 
-def generate_embedding(text: str) -> np.ndarray:
+def generate_embedding(text: str, *, redact: bool = True) -> np.ndarray:
     """Encode a single text into a 384-dim float32 embedding.
 
     Whitespace is stripped/normalized. Empty or None input raises ValueError.
+    When ``redact`` is True (default), emails / phones / account IDs are
+    stripped before encoding so PII is not written into the vector index.
 
     Returns:
         np.ndarray of dtype float32 with shape (384,).
-
-    Notes:
-        paraphrase-multilingual-MiniLM-L12-v2 places semantically similar
-        phrases from different languages (e.g. English / Hindi / Tamil) near
-        each other in this shared vector space, enabling cross-lingual search.
     """
     if text is None:
         raise ValueError("text must be a non-empty string; got None")
 
-    normalized = " ".join(str(text).split())
+    raw = str(text)
+    if redact:
+        from privacy.redact import redact_text
+
+        raw = redact_text(raw)
+
+    normalized = " ".join(raw.split())
     if not normalized:
         raise ValueError("text must be a non-empty string after whitespace normalization")
 
@@ -73,26 +76,22 @@ def generate_embedding(text: str) -> np.ndarray:
     return vector
 
 
-def generate_embeddings_batch(texts: list[str]) -> np.ndarray:
+def generate_embeddings_batch(texts: list[str], *, redact: bool = True) -> np.ndarray:
     """Batch-encode multiple texts into a (N, 384) float32 matrix.
 
     More efficient than calling generate_embedding() in a loop during CSV
     ingest, because SentenceTransformer.encode processes the batch together.
-
-    Args:
-        texts: List of ticket description (or other) strings.
-
-    Returns:
-        np.ndarray of dtype float32 with shape (len(texts), 384).
-
-    Notes:
-        Same cross-lingual property as generate_embedding(): similar meaning
-        across English/Hindi/Tamil maps to nearby vectors in one space.
+    PII is redacted by default before encoding.
     """
     if texts is None:
         raise ValueError("texts must be a list of strings; got None")
     if not isinstance(texts, list):
         raise TypeError(f"texts must be a list, got {type(texts).__name__}")
+
+    if redact:
+        from privacy.redact import redact_text
+
+        texts = [redact_text(t) if t is not None else t for t in texts]
 
     normalized = []
     for index, text in enumerate(texts):

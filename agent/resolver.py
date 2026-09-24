@@ -21,6 +21,12 @@ from agent.prompts import (
 from embeddings.generate import generate_embedding
 from embeddings.languages import detect_language, get_language_name
 from embeddings.similarity_search import build_oracle_hybrid_sql, find_similar_tickets
+from privacy.redact import (
+    merge_counts,
+    redact_chat_history,
+    redact_pii,
+    redact_tickets,
+)
 
 
 @dataclass
@@ -47,6 +53,8 @@ class AgentResult:
     refine_mode: bool = False
     reused_prior_tickets: bool = False
     original_query: str | None = None
+    pii_redacted: bool = False
+    pii_counts: dict[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -172,8 +180,40 @@ class TicketResolverAgent:
         if not clean_query:
             raise ValueError("query must be a non-empty string")
 
+        # PII redaction before embed / LLM (emails, phones, account IDs).
+        query_redaction = redact_pii(clean_query)
+        clean_query = query_redaction.text.strip() or clean_query
+        pii_totals = dict(query_redaction.counts)
+
+        history_in = list(chat_history or [])
+        history_in, hist_counts = redact_chat_history(history_in)
+        pii_totals = merge_counts(pii_totals, hist_counts)
+
+        tickets_in = list(prior_tickets or [])
+        tickets_in, ticket_counts = redact_tickets(tickets_in)
+        pii_totals = merge_counts(pii_totals, ticket_counts)
+
+        orig_raw = (original_query or "").strip()
+        if orig_raw:
+            orig_redaction = redact_pii(orig_raw)
+            original_query = orig_redaction.text.strip() or orig_raw
+            pii_totals = merge_counts(pii_totals, orig_redaction.counts)
+
+        chat_history = history_in or None
+        prior_tickets = tickets_in or None
+
         refine_mode = bool(chat_history) or bool(prior_tickets)
         base_issue = (original_query or clean_query).strip()
+
+        trace.append(
+            {
+                "step": "pii_redaction",
+                "duration_ms": 0.0,
+                "details": (
+                    f"redacted={bool(pii_totals)} counts={pii_totals or '{}'}"
+                ),
+            }
+        )
 
         # Language detection (prefer original issue language in refine mode)
         t0 = _now_ms()
@@ -426,4 +466,6 @@ class TicketResolverAgent:
             refine_mode=refine_mode,
             reused_prior_tickets=reused_prior,
             original_query=base_issue if refine_mode else clean_query,
+            pii_redacted=bool(pii_totals),
+            pii_counts=pii_totals,
         )

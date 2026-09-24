@@ -630,9 +630,18 @@ def file_new_ticket(
     language_code: str = "en",
     resolution: str | None = None,
 ) -> int | None:
-    """Insert an OPEN ticket into Oracle 23ai. Returns ticket_id or None if offline."""
+    """Insert an OPEN ticket into Oracle 23ai. Returns ticket_id or None if offline.
+
+    Description/resolution are PII-redacted before persistence.
+    """
     if not is_db_available():
         return None
+
+    from privacy.redact import redact_text
+
+    description = redact_text(description)
+    if resolution is not None:
+        resolution = redact_text(resolution)
 
     query_vec = _as_float32_vector(embedding)
     # Map agent CRITICAL → schema URGENT

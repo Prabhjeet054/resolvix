@@ -227,7 +227,12 @@ def ingest_tickets(csv_path: Path | str = CSV_PATH, seed: int | None = 42) -> No
                     resolved_date = _random_resolved_date(created_date)
 
                 metadata = _build_metadata(category_name)
-                embedding = generate_embedding(str(row["description"]))
+                from privacy.redact import redact_text
+
+                description = redact_text(str(row["description"]))
+                if resolution is not None:
+                    resolution = redact_text(str(resolution))
+                embedding = generate_embedding(description)
 
                 cursor.execute(
                     insert_sql,
@@ -235,7 +240,7 @@ def ingest_tickets(csv_path: Path | str = CSV_PATH, seed: int | None = 42) -> No
                         "customer_id": customer_id,
                         "agent_id": agent_id,
                         "category_id": category_id,
-                        "description": str(row["description"]),
+                        "description": description,
                         "language_code": str(row["language_code"]),
                         "ticket_status": ticket_status,
                         "priority": str(row["priority"]),

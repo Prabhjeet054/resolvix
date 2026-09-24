@@ -736,6 +736,10 @@ def main() -> None:
             f"Backend: **{backend_label}** · Language: {result.detected_language_name} "
             f"({result.detected_language_code}){refine_bits}"
         )
+        if getattr(result, "pii_redacted", False):
+            counts = getattr(result, "pii_counts", {}) or {}
+            detail = ", ".join(f"{k}:{v}" for k, v in counts.items()) or "yes"
+            st.caption(f"PII redacted before embed/LLM/storage ({detail})")
         if getattr(result, "refine_mode", False) and getattr(
             result, "reused_prior_tickets", False
         ):
@@ -844,14 +848,18 @@ def main() -> None:
                 st.error("Oracle is offline — cannot file ticket right now.")
             else:
                 with st.spinner("Inserting OPEN ticket…"):
-                    emb = generate_embedding(result.query)
+                    from privacy.redact import redact_text
+
+                    safe_desc = redact_text(result.query)
+                    safe_res = redact_text(result.synthesized_resolution)
+                    emb = generate_embedding(safe_desc)
                     ticket_id = file_new_ticket(
-                        description=result.query,
+                        description=safe_desc,
                         embedding=emb,
                         category_name=result.classified_category,
                         priority=result.classified_priority,
                         language_code=result.detected_language_code,
-                        resolution=result.synthesized_resolution,
+                        resolution=safe_res,
                     )
                 if ticket_id:
                     st.success(f"Filed as ticket **#{ticket_id}** (status=OPEN).")

@@ -15,5 +15,6 @@ contextBridge.exposeInMainWorld("resolvixDesktop", {
     feedbackLoop: true,
     hybridSearch: true,
     refineClarify: true,
+    piiRedaction: true,
   },
 });
