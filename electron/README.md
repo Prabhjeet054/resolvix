@@ -1,6 +1,6 @@
 # Resolvix Desktop (Electron)
 
-Downloadable desktop shell for Resolvix. Electron starts the local Python FastAPI backend and loads the **same** shared UI from [`../frontend/`](../frontend/) — including light/dark theme, resolution confidence, HITL auto-escalate, Emerging Incidents, thumbs feedback, and hybrid vector+keyword search. There is no separate Electron UI to keep in sync.
+Downloadable desktop shell for Resolvix. Electron starts the local Python FastAPI backend and loads the **same** shared UI from [`../frontend/`](../frontend/) — including light/dark theme, resolution confidence, HITL auto-escalate, Emerging Incidents, thumbs feedback, hybrid vector+keyword search, and multi-turn **Refine & Clarify**. There is no separate Electron UI to keep in sync.
 
 ## Prerequisites
 

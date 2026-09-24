@@ -117,6 +117,53 @@ def test_frontend_index_served():
     assert b"Resolvix" in resp.content
     assert b"Emerging Incidents" in resp.content
     assert b"incident-clusters" in resp.content
+    assert b"Refine" in resp.content and b"Clarify" in resp.content
+
+
+def test_resolve_refine_mode_reuses_prior_tickets():
+    fake = np.zeros(384, dtype=np.float32)
+    fake[0] = 1.0
+    prior = [
+        {
+            "ticket_id": 77,
+            "description": "double charge",
+            "resolution": "refund second capture",
+            "language_code": "en",
+            "category_name": "Billing",
+            "priority": "HIGH",
+            "similarity_score": 0.9,
+            "similarity_distance": 0.1,
+            "similarity_pct": 90.0,
+            "source_mode": "IN_MEMORY",
+        }
+    ]
+    mock_llm = MagicMock()
+    mock_llm.is_available.return_value = False
+
+    with patch("agent.resolver.generate_embedding", return_value=fake), patch(
+        "agent.resolver.find_similar_tickets"
+    ) as find_sim, patch("agent.resolver.detect_language", return_value="en"), patch(
+        "agent.resolver.OllamaClient", return_value=mock_llm
+    ):
+        resp = client.post(
+            "/api/v1/resolve",
+            json={
+                "query": "What if I'm on macOS instead of Windows?",
+                "original_query": "I was charged twice",
+                "chat_history": [
+                    {"role": "user", "content": "I was charged twice"},
+                    {"role": "assistant", "content": "Request a refund"},
+                ],
+                "prior_tickets": prior,
+            },
+        )
+    assert resp.status_code == 200
+    body = resp.json()
+    find_sim.assert_not_called()
+    assert body["refine_mode"] is True
+    assert body["reused_prior_tickets"] is True
+    assert body["original_query"] == "I was charged twice"
+    assert body["similar_ticket_ids"] == [77]
 
 
 def test_incidents_last_24h_includes_ticket_links():

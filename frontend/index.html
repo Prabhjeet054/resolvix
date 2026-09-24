@@ -145,14 +145,18 @@
         <hr />
         <h3>Refine &amp; Clarify (multi-turn)</h3>
         <p class="muted">
-          Ask follow-ups with full chat history + previously retrieved tickets passed into Ollama.
+          After the first resolve, ask follow-ups like “simplify for non-tech” or
+          “I’m on macOS”. Uses <code>chat_history</code> + the <strong>same</strong>
+          retrieved tickets (no fresh search on the follow-up phrase).
         </p>
+        <div id="refine-status" class="incident-panel hidden"></div>
         <label class="field-label" for="followup-preset">Quick follow-up</label>
         <select id="followup-preset">
           <option value="">— Type your own below —</option>
           <option>Can you simplify this for a non-technical user?</option>
           <option>What if I'm on macOS instead of Windows?</option>
           <option>Give me only the first 3 steps to try right now.</option>
+          <option>Explain the risk if I skip a step.</option>
         </select>
         <label class="field-label" for="follow-up">Follow-up question</label>
         <textarea

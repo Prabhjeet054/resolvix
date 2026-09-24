@@ -39,6 +39,7 @@
     lastResult: null,
     chatHistory: [],
     originalQuery: "",
+    priorTickets: [],
     feedback: null,
     langView: "en",
     view: "resolve",
@@ -51,8 +52,12 @@
     el.classList.toggle("hidden", !on);
   }
 
-  function setLoading(on) {
-    show($("loading"), on);
+  function setLoading(on, refine = false) {
+    const el = $("loading");
+    el.textContent = refine
+      ? "Refining with chat history + same retrieved tickets…"
+      : "Running agent pipeline…";
+    show(el, on);
     $("btn-resolve").disabled = on;
     $("btn-refine").disabled = on || !state.lastResult;
   }
@@ -246,6 +251,29 @@
       $("result-meta").textContent +=
         ` · Hybrid matches: ${hybridCount}/${tickets.length}`;
     }
+    if (result.refine_mode) {
+      $("result-meta").textContent += result.reused_prior_tickets
+        ? ` · Refine & Clarify (reused ${tickets.length} tickets)`
+        : " · Refine & Clarify";
+    }
+
+    const refineStatus = $("refine-status");
+    if (refineStatus) {
+      if (result.refine_mode && result.reused_prior_tickets) {
+        refineStatus.className = "incident-panel";
+        refineStatus.textContent =
+          `Using prior conversation + the same ${tickets.length} retrieved ticket(s). ` +
+          `Original issue kept for grounding.`;
+        show(refineStatus, true);
+      } else if (state.lastResult) {
+        refineStatus.className = "incident-panel";
+        refineStatus.textContent =
+          "Ready for follow-ups — Ask follow-up reuses these tickets (no fresh search).";
+        show(refineStatus, true);
+      } else {
+        show(refineStatus, false);
+      }
+    }
 
     const catClass = CATEGORY_PILL[result.category] || "pill-general";
     const priClass = PRIORITY_PILL[result.priority] || "pill-medium";
@@ -339,24 +367,39 @@
       show(box, false);
       return;
     }
-    box.innerHTML = state.chatHistory
-      .map((m) => {
-        const preview =
-          m.content.length > 240 ? `${m.content.slice(0, 240)}…` : m.content;
-        return `<div><strong>${escapeHtml(m.role)}:</strong> ${escapeHtml(preview)}</div>`;
-      })
-      .join("");
+    const turns = Math.ceil(state.chatHistory.length / 2);
+    box.innerHTML =
+      `<div class="muted" style="margin-bottom:0.35rem">Conversation (${turns} turn${
+        turns === 1 ? "" : "s"
+      })</div>` +
+      state.chatHistory
+        .map((m) => {
+          const preview =
+            m.content.length > 280 ? `${m.content.slice(0, 280)}…` : m.content;
+          return `<div class="chat-turn"><strong>${escapeHtml(
+            m.role
+          )}:</strong> ${escapeHtml(preview)}</div>`;
+        })
+        .join("");
     show(box, true);
   }
 
   async function runResolve({ query, refine }) {
     const clean = (query || "").trim();
     if (!clean) {
-      setError("Please enter a ticket description before searching.");
+      setError(
+        refine
+          ? "Enter a follow-up question before refining."
+          : "Please enter a ticket description before searching."
+      );
+      return;
+    }
+    if (refine && !state.lastResult) {
+      setError("Resolve a ticket first, then ask a follow-up.");
       return;
     }
     setError("");
-    setLoading(true);
+    setLoading(true, Boolean(refine));
     $("file-ticket-msg").textContent = "";
 
     try {
@@ -373,14 +416,28 @@
         payload.chat_history = state.chatHistory.length
           ? state.chatHistory
           : [
-              { role: "user", content: state.lastResult.query || state.originalQuery },
+              {
+                role: "user",
+                content:
+                  state.originalQuery ||
+                  state.lastResult.original_query ||
+                  state.lastResult.query,
+              },
               { role: "assistant", content: state.lastResult.resolution },
             ];
-        payload.prior_tickets = state.lastResult.similar_tickets || [];
-        payload.original_query = state.originalQuery || state.lastResult.query;
+        // Same retrieved tickets as the previous resolve (not re-searched).
+        payload.prior_tickets =
+          state.priorTickets && state.priorTickets.length
+            ? state.priorTickets
+            : state.lastResult.similar_tickets || [];
+        payload.original_query =
+          state.originalQuery ||
+          state.lastResult.original_query ||
+          state.lastResult.query;
       } else {
         state.chatHistory = [];
         state.originalQuery = clean;
+        state.priorTickets = [];
       }
 
       const result = await ResolvixAPI.resolve(payload);
@@ -393,14 +450,26 @@
         { role: "user", content: clean },
         { role: "assistant", content: result.resolution },
       ];
-      if (!state.originalQuery) state.originalQuery = clean;
+      if (!state.originalQuery) {
+        state.originalQuery = result.original_query || clean;
+      }
+      // Lock evidence set after first resolve; refine reuses it.
+      if (!refine || !state.priorTickets.length) {
+        state.priorTickets = result.similar_tickets || [];
+      } else if (result.reused_prior_tickets) {
+        state.priorTickets = result.similar_tickets || state.priorTickets;
+      }
+      if (refine) {
+        $("follow-up").value = "";
+        $("followup-preset").value = "";
+      }
       renderResult(result);
     } catch (err) {
       setError(
         `Agent pipeline failed gracefully — check Oracle / Ollama health.\n${err.message}`
       );
     } finally {
-      setLoading(false);
+      setLoading(false, Boolean(refine));
       refreshStatus();
     }
   }
@@ -665,6 +734,7 @@
       state.lastResult = null;
       state.chatHistory = [];
       state.originalQuery = "";
+      state.priorTickets = [];
       state.feedback = null;
       show($("result-panel"), false);
       show($("result-empty"), true);
@@ -672,6 +742,8 @@
       $("btn-up").disabled = false;
       $("btn-down").disabled = false;
       $("feedback-msg").textContent = "";
+      const refineStatus = $("refine-status");
+      if (refineStatus) show(refineStatus, false);
       renderChatHistory();
       setError("");
     });

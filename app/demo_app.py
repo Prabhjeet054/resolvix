@@ -596,13 +596,15 @@ def main() -> None:
         st.divider()
         st.markdown("#### Refine & Clarify (multi-turn)")
         st.caption(
-            "Ask follow-ups with full chat history + previously retrieved tickets "
-            "passed into Ollama."
+            "After the first resolve, ask follow-ups like “simplify for non-tech” "
+            "or “I’m on macOS”. Uses chat_history + the **same** retrieved tickets "
+            "(no fresh search on the follow-up phrase)."
         )
         sample_followups = [
             "Can you simplify this for a non-technical user?",
             "What if I'm on macOS instead of Windows?",
             "Give me only the first 3 steps to try right now.",
+            "Explain the risk if I skip a step.",
         ]
         picked = st.selectbox(
             "Quick follow-up:",
@@ -722,10 +724,25 @@ def main() -> None:
             if result.search_backend == "ORACLE_23AI"
             else "In-Memory hybrid (cosine + keyword)"
         )
+        refine_bits = ""
+        if getattr(result, "refine_mode", False):
+            if getattr(result, "reused_prior_tickets", False):
+                refine_bits = (
+                    f" · Refine & Clarify (reused {len(result.similar_tickets or [])} tickets)"
+                )
+            else:
+                refine_bits = " · Refine & Clarify"
         st.caption(
             f"Backend: **{backend_label}** · Language: {result.detected_language_name} "
-            f"({result.detected_language_code})"
+            f"({result.detected_language_code}){refine_bits}"
         )
+        if getattr(result, "refine_mode", False) and getattr(
+            result, "reused_prior_tickets", False
+        ):
+            st.info(
+                "Follow-up answered with conversation history and the **same** "
+                "retrieved tickets from the original resolve."
+            )
         st.markdown(
             _category_badge_html(result.classified_category, result.classified_priority),
             unsafe_allow_html=True,

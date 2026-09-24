@@ -266,3 +266,47 @@ def test_evaluate_escalation_high_confidence_no_page():
     assert decision.ESCALATION_REQUIRED is False
     assert decision.on_call_specialist is None
     assert decision.threshold == 0.65
+
+
+def test_agent_refine_reuses_prior_tickets_no_fresh_search():
+    fake_vec = np.zeros(384, dtype=np.float32)
+    fake_vec[0] = 1.0
+    mock_llm = MagicMock()
+    mock_llm.is_available.return_value = False
+
+    prior = [
+        {
+            "ticket_id": 42,
+            "description": "password reset expired",
+            "resolution": "reissue reset link",
+            "language_code": "en",
+            "category_name": "Login",
+            "priority": "HIGH",
+            "similarity_score": 0.93,
+            "similarity_distance": 0.07,
+            "similarity_pct": 93.0,
+            "source_mode": "IN_MEMORY",
+        }
+    ]
+
+    with patch("agent.resolver.generate_embedding", return_value=fake_vec) as emb, patch(
+        "agent.resolver.find_similar_tickets"
+    ) as find_sim, patch("agent.resolver.detect_language", return_value="en"):
+        result = TicketResolverAgent(llm=mock_llm).resolve(
+            "Can you simplify this for a non-technical user?",
+            chat_history=[
+                {"role": "user", "content": "Unable to reset my password"},
+                {"role": "assistant", "content": "1. Open reset link\n2. Set new password"},
+            ],
+            prior_tickets=prior,
+            original_query="Unable to reset my password",
+        )
+
+    find_sim.assert_not_called()
+    emb.assert_called()  # still embeds original issue for confidence path
+    assert result.refine_mode is True
+    assert result.reused_prior_tickets is True
+    assert result.original_query == "Unable to reset my password"
+    assert [t["ticket_id"] for t in result.similar_tickets] == [42]
+    assert "Ticket 42" in result.synthesized_resolution or "reissue" in result.synthesized_resolution
+    assert "Refine & Clarify" in result.live_sql

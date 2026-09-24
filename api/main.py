@@ -98,6 +98,9 @@ class ResolveResponse(BaseModel):
     llm_available: bool = False
     customer_id: str | None = None
     query: str | None = None
+    refine_mode: bool = False
+    reused_prior_tickets: bool = False
+    original_query: str | None = None
 
 
 class FileTicketRequest(BaseModel):
@@ -256,6 +259,9 @@ def resolve_ticket(payload: ResolveRequest) -> ResolveResponse:
         llm_available=bool(result.llm_available),
         customer_id=payload.customer_id,
         query=result.query,
+        refine_mode=bool(result.refine_mode),
+        reused_prior_tickets=bool(result.reused_prior_tickets),
+        original_query=result.original_query,
     )
 
 
@@ -287,6 +293,9 @@ def resolve_schema() -> dict[str, Any]:
             "escalation_required",
             "escalation",
             "search_backend",
+            "refine_mode",
+            "reused_prior_tickets",
+            "original_query",
             "trace_steps",
             "live_sql",
             "customer_id",

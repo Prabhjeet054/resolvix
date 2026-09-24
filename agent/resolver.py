@@ -44,6 +44,9 @@ class AgentResult:
     llm_available: bool = False
     classification_reasoning: str = ""
     escalation: dict | None = None  # full HITL EscalationDecision payload
+    refine_mode: bool = False
+    reused_prior_tickets: bool = False
+    original_query: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -188,10 +191,29 @@ class TicketResolverAgent:
 
         # Embedding + retrieval (reuse prior tickets on follow-up when available)
         t0 = _now_ms()
+        reused_prior = False
         if refine_mode and prior_tickets:
-            similar = list(prior_tickets)[:top_n]
+            # Keep the same evidence set for Refine & Clarify follow-ups.
+            similar = [dict(t) for t in prior_tickets if isinstance(t, dict)]
+            if top_n >= 1:
+                similar = similar[:top_n]
             embedding = generate_embedding(base_issue)
-            retrieval_detail = f"reused prior tickets ({len(similar)})"
+            reused_prior = True
+            retrieval_detail = f"reused prior tickets ({len(similar)}) [refine]"
+        elif refine_mode:
+            # Follow-up without explicit tickets: re-retrieve on the original issue,
+            # not the short follow-up phrase ("simplify for non-tech").
+            embedding = generate_embedding(base_issue)
+            similar = find_similar_tickets(
+                embedding,
+                top_n=top_n,
+                category_filter=category_filter,
+                priority_filter=priority_filter,
+                query_text=base_issue,
+            )
+            retrieval_detail = (
+                f"refine re-retrieve on original issue matches={len(similar)}"
+            )
         else:
             embedding = generate_embedding(clean_query)
             similar = find_similar_tickets(
@@ -226,10 +248,17 @@ class TicketResolverAgent:
             backend = "ORACLE_23AI" if is_db_available() else "IN_MEMORY"
 
         live_sql = build_oracle_hybrid_sql(
-            query_text=clean_query,
+            query_text=base_issue if refine_mode else clean_query,
             category_filter=category_filter,
             priority_filter=priority_filter,
         )
+        if refine_mode:
+            live_sql = (
+                "-- Refine & Clarify: evidence reused from prior resolve "
+                f"({len(similar)} ticket(s)); follow-up does not re-rank search.\n"
+                if reused_prior
+                else "-- Refine & Clarify: re-retrieved using original issue text.\n"
+            ) + live_sql
         t_retrieve = _now_ms()
         trace.append(
             {
@@ -394,4 +423,7 @@ class TicketResolverAgent:
             llm_available=llm_ok,
             classification_reasoning=reasoning,
             escalation=decision.to_dict(),
+            refine_mode=refine_mode,
+            reused_prior_tickets=reused_prior,
+            original_query=base_issue if refine_mode else clean_query,
         )
