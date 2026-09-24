@@ -125,6 +125,74 @@
     return result.resolution;
   }
 
+  function renderConfidenceEscalation(result) {
+    const panel = $("confidence-panel");
+    if (!panel) return;
+
+    const esc = result.escalation || {};
+    const simPct =
+      Number(
+        (esc.top_similarity != null ? esc.top_similarity : result.confidence) || 0
+      ) * 100;
+    const floorPct = Math.round(
+      Number(esc.threshold != null ? esc.threshold : 0.65) * 100
+    );
+    const required = Boolean(
+      result.escalation_required || esc.ESCALATION_REQUIRED
+    );
+    const reasons = esc.reasons || [];
+    const reasonText =
+      reasons.length > 0
+        ? reasons.join("; ")
+        : result.escalation_hint || "";
+
+    panel.classList.toggle("escalate", required);
+    panel.classList.toggle("ok", !required);
+    show(panel, true);
+
+    const flag = $("confidence-flag");
+    flag.textContent = required
+      ? "ESCALATION_REQUIRED = TRUE · Auto-escalate"
+      : "ESCALATION_REQUIRED = FALSE";
+    flag.className = required
+      ? "confidence-flag flag-escalate"
+      : "confidence-flag flag-ok";
+
+    $("confidence-pct").textContent = `${simPct.toFixed(1)}%`;
+    $("confidence-floor").textContent = `${floorPct}%`;
+    $("confidence-priority").textContent = result.priority || "—";
+    $("confidence-bar").style.width = `${Math.min(100, Math.max(0, simPct))}%`;
+
+    const hint = panel.querySelector(".confidence-hint");
+    if (hint) {
+      hint.textContent =
+        `Escalate when top similarity < ${floorPct}% or priority is CRITICAL.`;
+    }
+
+    const escBox = $("escalation-box");
+    if (required) {
+      escBox.innerHTML =
+        `<p class="escalate-warn">Human-in-the-loop escalation recommended — do not auto-close.</p>` +
+        `<div class="escalate-grid">` +
+        `<div><span class="metric-label">Tier / department</span>` +
+        `<div><code>${escapeHtml(esc.tier || "—")}</code> · ` +
+        `<strong>${escapeHtml(esc.department || "TBD")}</strong></div></div>` +
+        `<div><span class="metric-label">On-call specialist</span>` +
+        `<div>${escapeHtml(esc.on_call_specialist || "—")}</div></div>` +
+        `<div><span class="metric-label">Queue</span>` +
+        `<div><code>${escapeHtml(esc.queue || "—")}</code></div></div>` +
+        `<div><span class="metric-label">Reasons</span>` +
+        `<div>${escapeHtml(reasonText || "—")}</div></div>` +
+        `</div>`;
+    } else {
+      const summary =
+        esc.summary ||
+        `Top similarity ${simPct.toFixed(1)}% ≥ ${floorPct}% and ` +
+          `priority=${result.priority || "?"} — no page required.`;
+      escBox.innerHTML = `<p class="escalate-ok">${escapeHtml(summary)}</p>`;
+    }
+  }
+
   function renderResult(result) {
     state.lastResult = result;
     show($("result-empty"), false);
@@ -135,10 +203,9 @@
       result.search_backend === "ORACLE_23AI"
         ? "Oracle 23ai VECTOR_DISTANCE"
         : "In-Memory cosine fallback";
-    const conf = ((result.confidence || 0) * 100).toFixed(1);
     $("result-meta").textContent =
       `Backend: ${backend} · Language: ${result.detected_language_name || "?"} ` +
-      `(${result.language_code || "?"}) · Confidence: ${conf}%`;
+      `(${result.language_code || "?"})`;
 
     const catClass = CATEGORY_PILL[result.category] || "pill-general";
     const priClass = PRIORITY_PILL[result.priority] || "pill-medium";
@@ -150,19 +217,7 @@
       ? `Classification: ${result.classification_reasoning}`
       : "";
 
-    const escBox = $("escalation-box");
-    if (result.escalation_required) {
-      const esc = result.escalation || {};
-      escBox.innerHTML =
-        `<strong>ESCALATION_REQUIRED = TRUE</strong><br>` +
-        `Route to: ${escapeHtml(esc.tier || "—")} ${escapeHtml(esc.department || "TBD")}<br>` +
-        `On-call: ${escapeHtml(esc.on_call_specialist || "—")}<br>` +
-        `Queue: ${escapeHtml(esc.queue || "—")}<br>` +
-        `Reasons: ${escapeHtml((esc.reasons || []).join(", ") || result.escalation_hint || "")}`;
-      show(escBox, true);
-    } else {
-      show(escBox, false);
-    }
+    renderConfidenceEscalation(result);
 
     const hasNative =
       Boolean(result.localized_resolution) &&

@@ -22,6 +22,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 import streamlit as st
 
+from agent.escalation import SIMILARITY_ESCALATION_THRESHOLD
 from agent.llm_client import OllamaClient
 from agent.resolver import AgentResult, TicketResolverAgent
 from db.connection import is_db_available
@@ -63,6 +64,51 @@ st.markdown(
     .badge-medium { background: #fef9c3; color: #854d0e; }
     .badge-high { background: #ffedd5; color: #9a3412; }
     .badge-critical { background: #fee2e2; color: #991b1b; }
+    .confidence-panel {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin: 10px 0 14px 0;
+        background: #f9fafb;
+    }
+    .confidence-panel.escalate {
+        background: #fef2f2;
+        border-color: #fecaca;
+    }
+    .confidence-panel.ok {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+    .confidence-title {
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin-bottom: 6px;
+    }
+    .confidence-meta {
+        color: #4b5563;
+        font-size: 0.85rem;
+        margin-top: 4px;
+    }
+    .escalate-flag {
+        display: inline-block;
+        font-weight: 700;
+        color: #991b1b;
+        background: #fee2e2;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        margin-bottom: 8px;
+    }
+    .ok-flag {
+        display: inline-block;
+        font-weight: 700;
+        color: #065f46;
+        background: #d1fae5;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        margin-bottom: 8px;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -146,6 +192,68 @@ def render_result_card(rank: int, match: dict) -> None:
             st.info("No resolution text stored for this ticket.")
 
 
+def render_confidence_escalation(result: AgentResult) -> None:
+    """Surface top similarity %, auto-escalate rules, and HITL routing."""
+    esc = result.escalation or {}
+    sim_pct = float(esc.get("top_similarity", result.confidence) or 0.0) * 100.0
+    threshold_pct = SIMILARITY_ESCALATION_THRESHOLD * 100.0
+    required = bool(result.escalation_required or esc.get("ESCALATION_REQUIRED"))
+    reasons = list(esc.get("reasons") or [])
+    if not reasons and result.escalation_hint:
+        reasons = [result.escalation_hint]
+
+    panel_class = "confidence-panel escalate" if required else "confidence-panel ok"
+    flag_html = (
+        '<span class="escalate-flag">ESCALATION_REQUIRED = TRUE · Auto-escalate</span>'
+        if required
+        else '<span class="ok-flag">ESCALATION_REQUIRED = FALSE</span>'
+    )
+
+    st.markdown(
+        f'<div class="{panel_class}">'
+        f'<div class="confidence-title">Resolution confidence</div>'
+        f"{flag_html}"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Top similarity", f"{sim_pct:.1f}%")
+    m2.metric("Confidence floor", f"{threshold_pct:.0f}%")
+    m3.metric("Priority", result.classified_priority)
+
+    # Visual confidence bar (0–100% of top match similarity)
+    st.progress(min(1.0, max(0.0, sim_pct / 100.0)))
+    st.caption(
+        f"Escalate when top similarity **&lt; {threshold_pct:.0f}%** "
+        f"or priority is **CRITICAL** "
+        f"(rules from `agent/escalation.py`)."
+    )
+
+    if required:
+        st.error("Human-in-the-loop escalation recommended — do not auto-close.")
+        r1, r2 = st.columns(2)
+        with r1:
+            st.markdown(
+                f"**Tier / department**  \n"
+                f"`{esc.get('tier') or '—'}` · **{esc.get('department') or 'TBD'}**"
+            )
+            st.markdown(f"**Queue**  \n`{esc.get('queue') or '—'}`")
+        with r2:
+            st.markdown(
+                f"**On-call specialist**  \n"
+                f"{esc.get('on_call_specialist') or '—'}"
+            )
+            if reasons:
+                st.markdown("**Reasons**  \n" + "  \n".join(f"- {r}" for r in reasons))
+    else:
+        summary = esc.get("summary") or (
+            f"Top similarity {sim_pct:.1f}% ≥ {threshold_pct:.0f}% and "
+            f"priority={result.classified_priority} — no page required."
+        )
+        st.success(summary)
+
+
 def main() -> None:
     st.title("Resolvix — Multilingual Agentic RAG")
     st.caption(
@@ -192,7 +300,7 @@ def main() -> None:
 
         st.divider()
         st.subheader("Roadmap")
-        st.caption("Multi-turn refine · Semantic incident clustering · HITL escalation")
+        st.caption("Multi-turn refine · Semantic incident clustering · HITL confidence + auto-escalate")
         cluster_method = st.selectbox(
             "Incident clustering method",
             options=["dbscan", "kmeans", "greedy"],
@@ -450,7 +558,7 @@ def main() -> None:
         )
         st.caption(
             f"Backend: **{backend_label}** · Language: {result.detected_language_name} "
-            f"({result.detected_language_code}) · Confidence: {result.confidence * 100:.1f}%"
+            f"({result.detected_language_code})"
         )
         st.markdown(
             _category_badge_html(result.classified_category, result.classified_priority),
@@ -459,18 +567,7 @@ def main() -> None:
         if result.classification_reasoning:
             st.caption(f"Classification: {result.classification_reasoning}")
 
-        if result.escalation_required:
-            esc = result.escalation or {}
-            st.error("ESCALATION_REQUIRED = TRUE")
-            st.markdown(
-                f"**Route to:** `{esc.get('tier') or '—'}` "
-                f"**{esc.get('department') or 'TBD'}**  \n"
-                f"**On-call specialist:** {esc.get('on_call_specialist') or '—'}  \n"
-                f"**Queue:** `{esc.get('queue') or '—'}`  \n"
-                f"**Reasons:** {', '.join(esc.get('reasons') or []) or result.escalation_hint}"
-            )
-        elif result.escalation:
-            st.caption(result.escalation.get("summary", "ESCALATION_REQUIRED = FALSE"))
+        render_confidence_escalation(result)
 
         # AI resolution card
         st.markdown("**AI Synthesized Solution**")

@@ -62,6 +62,7 @@ class EscalationDecision:
     on_call_specialist: str | None
     queue: str | None
     summary: str
+    threshold: float = SIMILARITY_ESCALATION_THRESHOLD
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -129,4 +130,5 @@ def evaluate_escalation(
         on_call_specialist=routing.get("on_call_specialist"),
         queue=routing.get("queue"),
         summary=summary,
+        threshold=float(threshold),
     )

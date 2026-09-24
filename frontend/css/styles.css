@@ -407,6 +407,109 @@ html[data-theme="dark"] .pill-critical { background: #3b1614; color: #fca5a5; }
   background: linear-gradient(90deg, var(--accent), #2bb673);
 }
 
+.confidence-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.85rem 0.95rem;
+  margin: 0.65rem 0 0.9rem;
+  background: var(--surface-muted);
+}
+
+.confidence-panel.escalate {
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+}
+
+.confidence-panel.ok {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.confidence-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.confidence-flag {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.15rem 0.65rem;
+  border-radius: 999px;
+}
+
+.confidence-flag.flag-escalate {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+}
+
+.confidence-flag.flag-ok {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.confidence-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.confidence-metrics .metric-label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.confidence-metrics .metric-value {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-top: 0.15rem;
+}
+
+.confidence-bar {
+  margin: 0.35rem 0 0.35rem;
+}
+
+.confidence-hint {
+  margin: 0.25rem 0 0.55rem;
+  font-size: 0.8rem;
+}
+
+.escalation-detail .escalate-warn {
+  color: var(--danger);
+  font-weight: 600;
+  margin: 0 0 0.55rem;
+}
+
+.escalation-detail .escalate-ok {
+  color: var(--accent);
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.escalate-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem 1rem;
+  font-size: 0.9rem;
+}
+
+.escalate-grid .metric-label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.15rem;
+}
+
 .escalation {
   background: var(--danger-soft);
   border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
@@ -414,6 +517,13 @@ html[data-theme="dark"] .pill-critical { background: #3b1614; color: #fca5a5; }
   border-radius: 8px;
   padding: 0.75rem 0.85rem;
   margin: 0.5rem 0 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .confidence-metrics,
+  .escalate-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .lang-toggle {

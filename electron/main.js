@@ -1,13 +1,24 @@
 /**
  * Resolvix Electron main process.
- * Spawns the Python FastAPI backend, waits for /health, then loads the shared UI.
+ * Spawns the Python FastAPI backend, waits for /health, then loads the shared UI
+ * from frontend/ (same assets as the browser — including confidence + auto-escalate).
  */
-const { app, BrowserWindow, shell } = require("electron");
+const { app, BrowserWindow, shell, session } = require("electron");
 const path = require("path");
 const { startBackend, stopBackend, DEFAULT_PORT } = require("./scripts/start-backend");
 
 let mainWindow = null;
 let backend = null;
+
+function browserPrefs() {
+  return {
+    preload: path.join(__dirname, "preload.js"),
+    contextIsolation: true,
+    nodeIntegration: false,
+    // Shared UI is served by FastAPI; keep Chromium from pinning stale CSS/JS.
+    spellcheck: false,
+  };
+}
 
 function createSplash(message) {
   const win = new BrowserWindow({
@@ -16,11 +27,7 @@ function createSplash(message) {
     resizable: false,
     frame: true,
     show: true,
-    webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
+    webPreferences: browserPrefs(),
   });
   const html = encodeURIComponent(`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Resolvix</title>
@@ -35,6 +42,23 @@ function createSplash(message) {
 <body><div class="box"><h1>Resolvix</h1><p>${message}</p></div></body></html>`);
   win.loadURL(`data:text/html;charset=utf-8,${html}`);
   return win;
+}
+
+async function loadSharedUi(url) {
+  // Drop HTTP cache so Electron always mirrors the latest frontend/ assets.
+  try {
+    await session.defaultSession.clearCache();
+  } catch {
+    // non-fatal
+  }
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.setSize(1280, 860);
+  mainWindow.center();
+  await mainWindow.loadURL(url);
+  mainWindow.webContents.setWindowOpenHandler(({ url: openUrl }) => {
+    shell.openExternal(openUrl);
+    return { action: "deny" };
+  });
 }
 
 async function boot() {
@@ -93,16 +117,7 @@ async function boot() {
     return;
   }
 
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-
-  mainWindow.setSize(1280, 860);
-  mainWindow.center();
-  mainWindow.loadURL(backend.url);
-
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
-    return { action: "deny" };
-  });
+  await loadSharedUi(backend.url);
 }
 
 app.whenReady().then(boot);

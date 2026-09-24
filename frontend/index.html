@@ -30,7 +30,7 @@
 
     <hr />
     <h3>Roadmap</h3>
-    <p class="muted">Multi-turn refine · Semantic incident clustering · HITL escalation</p>
+    <p class="muted">Multi-turn refine · Semantic incident clustering · HITL confidence + auto-escalate</p>
 
     <label class="field-label" for="cluster-method">Incident clustering method</label>
     <select id="cluster-method">
@@ -174,7 +174,32 @@
           <p class="muted" id="result-meta"></p>
           <div id="result-badges" class="badges"></div>
           <p class="muted" id="classification-reason"></p>
-          <div id="escalation-box" class="escalation hidden"></div>
+
+          <div id="confidence-panel" class="confidence-panel hidden">
+            <div class="confidence-header">
+              <strong>Resolution confidence</strong>
+              <span id="confidence-flag" class="confidence-flag"></span>
+            </div>
+            <div class="confidence-metrics">
+              <div>
+                <span class="metric-label">Top similarity</span>
+                <span id="confidence-pct" class="metric-value">—</span>
+              </div>
+              <div>
+                <span class="metric-label">Confidence floor</span>
+                <span id="confidence-floor" class="metric-value">65%</span>
+              </div>
+              <div>
+                <span class="metric-label">Priority</span>
+                <span id="confidence-priority" class="metric-value">—</span>
+              </div>
+            </div>
+            <div class="progress confidence-bar"><span id="confidence-bar"></span></div>
+            <p class="muted confidence-hint">
+              Escalate when top similarity &lt; 65% or priority is CRITICAL.
+            </p>
+            <div id="escalation-box" class="escalation-detail"></div>
+          </div>
 
           <h3>AI Synthesized Solution</h3>
           <div id="lang-toggle" class="lang-toggle hidden">

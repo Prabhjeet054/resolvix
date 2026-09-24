@@ -1,6 +1,6 @@
 # Resolvix Desktop (Electron)
 
-Downloadable desktop shell for Resolvix. Electron starts the local Python FastAPI backend and loads the **same** shared UI from [`../frontend/`](../frontend/).
+Downloadable desktop shell for Resolvix. Electron starts the local Python FastAPI backend and loads the **same** shared UI from [`../frontend/`](../frontend/) — including light/dark theme, resolution confidence, and HITL auto-escalate (queue / on-call from `agent/escalation.py`). There is no separate Electron UI to keep in sync.
 
 ## Prerequisites
 
@@ -44,7 +44,9 @@ source .venv/bin/activate
 uvicorn api.main:app --host 127.0.0.1 --port 8080
 ```
 
-Open http://127.0.0.1:8080 — identical frontend.
+Open http://127.0.0.1:8080 — identical frontend to the desktop window (confidence panel, theme toggle, escalation routing).
+
+Electron clears its HTTP cache on each launch so `frontend/` changes (CSS/JS) appear without rebuilding the shell.
 
 ## Build installers
 

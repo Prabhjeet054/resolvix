@@ -245,6 +245,7 @@ def test_evaluate_escalation_critical_priority():
     assert "CRITICAL" in "".join(decision.reasons)
     assert decision.tier == "Tier-3"
     assert "Jordan Blake" in (decision.on_call_specialist or "")
+    assert decision.threshold == 0.65
 
 
 def test_evaluate_escalation_high_confidence_no_page():
@@ -257,3 +258,4 @@ def test_evaluate_escalation_high_confidence_no_page():
     )
     assert decision.ESCALATION_REQUIRED is False
     assert decision.on_call_specialist is None
+    assert decision.threshold == 0.65

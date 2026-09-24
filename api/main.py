@@ -331,12 +331,25 @@ def incidents_last_24h(
 # ---------------------------------------------------------------------------
 
 
+@app.middleware("http")
+async def no_cache_frontend_assets(request, call_next):
+    """Keep Electron/browser in sync with frontend/ edits (confidence UI, themes)."""
+    response = await call_next(request)
+    path = request.url.path or ""
+    if path == "/" or path.startswith("/css/") or path.startswith("/js/"):
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
+
+
 @app.get("/")
 def serve_index() -> FileResponse:
     index = FRONTEND_DIR / "index.html"
     if not index.is_file():
         raise HTTPException(status_code=404, detail="frontend/index.html not found")
-    return FileResponse(index)
+    return FileResponse(
+        index,
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 
 if (FRONTEND_DIR / "css").is_dir():
