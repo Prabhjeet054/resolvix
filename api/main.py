@@ -8,6 +8,8 @@ Primary contracts:
   POST /api/v1/resolve
   GET  /api/v1/status
   POST /api/v1/tickets
+  POST /api/v1/feedback
+  GET  /api/v1/feedback/review
   GET  /api/v1/incidents/last-24h
   Static frontend/ mounted at /
 """
@@ -109,6 +111,27 @@ class FileTicketRequest(BaseModel):
 class FileTicketResponse(BaseModel):
     ticket_id: int | None
     filed: bool
+    message: str
+
+
+class FeedbackRequest(BaseModel):
+    vote: Literal["up", "down"]
+    query: str = Field(..., min_length=1)
+    resolution: str | None = None
+    similar_ticket_ids: list[int] = Field(default_factory=list)
+    category: str | None = None
+    priority: str | None = None
+    search_backend: str | None = None
+    source: str = "web"
+
+
+class FeedbackResponse(BaseModel):
+    recorded: bool
+    event_id: str
+    vote: str
+    ticket_ids: list[int] = Field(default_factory=list)
+    flagged: dict[str, Any] | None = None
+    suppressed_ticket_ids: list[int] = Field(default_factory=list)
     message: str
 
 
@@ -309,6 +332,57 @@ def create_ticket(payload: FileTicketRequest) -> FileTicketResponse:
         filed=True,
         message=f"Filed as ticket #{ticket_id} (status=OPEN).",
     )
+
+
+# ---------------------------------------------------------------------------
+# Feedback loop (thumbs → better retrieval)
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/v1/feedback", response_model=FeedbackResponse)
+def submit_feedback(payload: FeedbackRequest) -> FeedbackResponse:
+    """Persist thumbs up/down; downvotes suppress weak matches and flag review."""
+    try:
+        from feedback.store import record_feedback
+
+        result = record_feedback(
+            payload.vote,
+            query=payload.query,
+            resolution=payload.resolution,
+            similar_ticket_ids=payload.similar_ticket_ids,
+            category=payload.category,
+            priority=payload.priority,
+            search_backend=payload.search_backend,
+            source=payload.source or "web",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"feedback failed: {exc}") from exc
+
+    return FeedbackResponse(
+        recorded=bool(result.get("recorded")),
+        event_id=str(result.get("event_id")),
+        vote=str(result.get("vote")),
+        ticket_ids=list(result.get("ticket_ids") or []),
+        flagged=result.get("flagged"),
+        suppressed_ticket_ids=sorted(int(x) for x in (result.get("suppressed_ticket_ids") or [])),
+        message=str(result.get("message") or "Feedback recorded."),
+    )
+
+
+@app.get("/api/v1/feedback/review")
+def feedback_review(
+    status: str | None = Query(default="open"),
+    limit: int = Query(default=50, ge=1, le=200),
+) -> dict[str, Any]:
+    """List resolutions flagged by thumbs-down for human review."""
+    from feedback.store import feedback_stats, list_flagged_resolutions
+
+    return {
+        "stats": feedback_stats(),
+        "flagged": list_flagged_resolutions(status=status, limit=limit),
+    }
 
 
 @app.get("/api/v1/incidents/last-24h")

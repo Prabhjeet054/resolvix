@@ -45,6 +45,16 @@
         body: JSON.stringify(payload),
       });
     },
+    submitFeedback(payload) {
+      return request("/api/v1/feedback", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    },
+    feedbackReview(status = "open") {
+      const q = status ? `?status=${encodeURIComponent(status)}` : "";
+      return request(`/api/v1/feedback/review${q}`);
+    },
     incidentsLast24h(method, hours = 24, minClusterSize = 5) {
       const params = new URLSearchParams();
       if (method) params.set("method", method);

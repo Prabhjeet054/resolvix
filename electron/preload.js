@@ -12,5 +12,6 @@ contextBridge.exposeInMainWorld("resolvixDesktop", {
     emergingIncidents: true,
     confidenceEscalation: true,
     themeToggle: true,
+    feedbackLoop: true,
   },
 });

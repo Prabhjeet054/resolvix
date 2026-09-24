@@ -255,35 +255,58 @@ def find_similar_tickets(
     category_filter: str | None = None,
     priority_filter: str | None = None,
     prefer_oracle: bool = True,
+    apply_feedback: bool = True,
 ) -> list[dict[str, Any]]:
     """Find similar resolved tickets via Oracle or in-memory fallback.
 
     Never raises solely because Oracle is offline — falls back to CSV corpus.
+    When ``apply_feedback`` is True, over-fetches candidates and drops weak
+    matches that have net thumbs-down votes (see ``feedback.store``).
     """
     if top_n < 1:
         raise ValueError(f"top_n must be >= 1, got {top_n}")
 
     query_vec = _as_float32_vector(query_embedding)
+    # Over-fetch so suppressed weak matches can be replaced.
+    fetch_n = top_n * 3 if apply_feedback else top_n
 
+    results: list[dict[str, Any]]
     if prefer_oracle and is_db_available():
         try:
-            return _search_oracle(
+            results = _search_oracle(
                 query_vec,
-                top_n=top_n,
+                top_n=fetch_n,
                 category_filter=category_filter,
                 priority_filter=priority_filter,
                 exclude_ticket_id=exclude_ticket_id,
             )
         except Exception:
+            results = find_similar_in_memory(
+                query_vec,
+                top_n=fetch_n,
+                category_filter=category_filter,
+                priority_filter=priority_filter,
+                exclude_ticket_id=exclude_ticket_id,
+            )
+    else:
+        results = find_similar_in_memory(
+            query_vec,
+            top_n=fetch_n,
+            category_filter=category_filter,
+            priority_filter=priority_filter,
+            exclude_ticket_id=exclude_ticket_id,
+        )
+
+    if apply_feedback:
+        try:
+            from feedback.store import apply_feedback_to_matches
+
+            results = apply_feedback_to_matches(results)
+        except Exception:
+            # Feedback store must never break retrieval.
             pass
 
-    return find_similar_in_memory(
-        query_vec,
-        top_n=top_n,
-        category_filter=category_filter,
-        priority_filter=priority_filter,
-        exclude_ticket_id=exclude_ticket_id,
-    )
+    return results[:top_n]
 
 
 def file_new_ticket(

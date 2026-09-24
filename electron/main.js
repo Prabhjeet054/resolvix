@@ -1,8 +1,8 @@
 /**
  * Resolvix Electron main process.
  * Spawns the Python FastAPI backend, waits for /health, then loads the shared UI
- * from frontend/ (same assets as the browser — confidence, auto-escalate, and
- * Emerging Incidents / Incident Ops).
+ * from frontend/ (same assets as the browser — confidence, auto-escalate,
+ * Emerging Incidents, and thumbs feedback → retrieval).
  */
 const { app, BrowserWindow, shell, session } = require("electron");
 const path = require("path");

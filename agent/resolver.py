@@ -200,7 +200,11 @@ class TicketResolverAgent:
                 category_filter=category_filter,
                 priority_filter=priority_filter,
             )
-            retrieval_detail = f"fresh search matches={len(similar)}"
+            flagged_n = sum(1 for t in similar if t.get("feedback_flagged"))
+            retrieval_detail = (
+                f"fresh search matches={len(similar)}"
+                + (f", feedback_flagged={flagged_n}" if flagged_n else "")
+            )
         trace.append(
             {
                 "step": "embedding",

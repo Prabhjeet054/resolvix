@@ -171,17 +171,27 @@ def _category_badge_html(category: str, priority: str) -> str:
 def render_result_card(rank: int, match: dict) -> None:
     score = float(match.get("similarity_score") or 0.0)
     percent = float(match.get("similarity_pct") or max(0.0, min(100.0, score * 100.0)))
+    votes = match.get("feedback_votes") or {}
     with st.container(border=True):
-        st.markdown(
+        title = (
             f"**#{rank} · Ticket `{match.get('ticket_id')}`** &nbsp;|&nbsp; "
             f"Language: `{str(match.get('language_code', '?')).upper()}` &nbsp;|&nbsp; "
             f"Category: **{match.get('category_name', '?')}** &nbsp;|&nbsp; "
             f"Priority: `{match.get('priority', '?')}`"
         )
+        if match.get("feedback_flagged"):
+            title += " · ⚠️ prior thumbs-down"
+        st.markdown(title)
         st.progress(min(1.0, percent / 100.0))
+        vote_caption = ""
+        if votes.get("up") or votes.get("down"):
+            vote_caption = (
+                f" · votes 👍{int(votes.get('up') or 0)} / 👎{int(votes.get('down') or 0)}"
+            )
         st.caption(
             f"Similarity score: **{percent:.1f}%** "
             f"(Cosine distance: {float(match.get('similarity_distance') or 0):.4f})"
+            f"{vote_caption}"
         )
         st.markdown("**Original Description:**")
         st.write(match.get("description") or "(empty)")
@@ -450,8 +460,22 @@ def main() -> None:
             st.session_state["chat_history"] = []
             st.session_state["last_result"] = None
             st.session_state["feedback"] = None
+            st.session_state["feedback_message"] = None
             st.session_state["incident_report"] = None
             st.rerun()
+
+        try:
+            from feedback.store import feedback_stats
+
+            stats = feedback_stats()
+            if stats.get("events"):
+                st.caption(
+                    f"Feedback: 👍{stats['up']} / 👎{stats['down']} · "
+                    f"{stats['open_review_flags']} open review flag(s) · "
+                    f"{stats['suppressible_tickets']} suppressible ticket(s)"
+                )
+        except Exception:
+            pass
 
     page = st.radio(
         "Workspace",
@@ -743,15 +767,52 @@ def main() -> None:
             )
         with c2:
             if st.button("👍 Helpful", use_container_width=True):
+                from feedback.store import record_feedback
+
+                ticket_ids = [
+                    int(t["ticket_id"])
+                    for t in (result.similar_tickets or [])
+                    if t.get("ticket_id") is not None
+                ]
+                resp = record_feedback(
+                    "up",
+                    query=result.query,
+                    resolution=body,
+                    similar_ticket_ids=ticket_ids,
+                    category=result.classified_category,
+                    priority=result.classified_priority,
+                    search_backend=result.search_backend,
+                    source="streamlit",
+                )
                 st.session_state["feedback"] = "up"
+                st.session_state["feedback_message"] = resp.get("message")
         with c3:
             if st.button("👎 Not helpful", use_container_width=True):
+                from feedback.store import record_feedback
+
+                ticket_ids = [
+                    int(t["ticket_id"])
+                    for t in (result.similar_tickets or [])
+                    if t.get("ticket_id") is not None
+                ]
+                resp = record_feedback(
+                    "down",
+                    query=result.query,
+                    resolution=body,
+                    similar_ticket_ids=ticket_ids,
+                    category=result.classified_category,
+                    priority=result.classified_priority,
+                    search_backend=result.search_backend,
+                    source="streamlit",
+                )
                 st.session_state["feedback"] = "down"
+                st.session_state["feedback_message"] = resp.get("message")
         with c4:
+            msg = st.session_state.get("feedback_message")
             if st.session_state.get("feedback") == "up":
-                st.success("Thanks — feedback recorded.")
+                st.success(msg or "Thanks — feedback recorded.")
             elif st.session_state.get("feedback") == "down":
-                st.info("Thanks — we'll use this to improve grounding.")
+                st.warning(msg or "Thanks — flagged for review; weak matches will be suppressed.")
         with st.expander("Raw markdown (clipboard-friendly)", expanded=False):
             st.code(copy_text, language="markdown")
 

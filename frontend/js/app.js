@@ -113,6 +113,35 @@
       $("badge-oracle").textContent = "Oracle 23ai: 🔴 status unavailable";
       $("badge-ollama").textContent = `Ollama LLM: 🔴 ${err.message}`;
     }
+    refreshFeedbackStats();
+  }
+
+  async function refreshFeedbackStats() {
+    const box = $("feedback-stats");
+    if (!box) return;
+    try {
+      const review = await ResolvixAPI.feedbackReview("open");
+      const s = review.stats || {};
+      const desktop =
+        window.resolvixDesktop && window.resolvixDesktop.isDesktop
+          ? " · desktop"
+          : "";
+      box.textContent =
+        `Feedback: 👍${s.up || 0} / 👎${s.down || 0} · ` +
+        `${s.open_review_flags || 0} open review · ` +
+        `${s.suppressible_tickets || 0} suppressible${desktop}`;
+      box.className = "incident-panel";
+    } catch (err) {
+      box.textContent = `Feedback: unavailable (${err.message})`;
+      box.className = "incident-panel warn";
+    }
+  }
+
+  function clientSource() {
+    if (window.resolvixDesktop && window.resolvixDesktop.isDesktop) {
+      return "electron";
+    }
+    return "web";
   }
 
   function resolutionBody(result) {
@@ -247,14 +276,23 @@
             : (match.similarity_score || 0) * 100
         );
         const card = document.createElement("div");
+        const feedbackNote = match.feedback_flagged
+          ? ` <span class="pill pill-critical">prior thumbs-down</span>`
+          : "";
+        const votes = match.feedback_votes || {};
+        const voteCaption =
+          votes.up || votes.down
+            ? ` · votes 👍${votes.up || 0} / 👎${votes.down || 0}`
+            : "";
         card.className = "ticket-card";
         card.innerHTML =
           `<strong>#${idx + 1} · Ticket ${escapeHtml(match.ticket_id)}</strong> | ` +
           `Language: ${escapeHtml(String(match.language_code || "?").toUpperCase())} | ` +
           `Category: ${escapeHtml(match.category_name || "?")} | ` +
           `Priority: ${escapeHtml(match.priority || "?")}` +
+          feedbackNote +
           `<div class="progress"><span style="width:${Math.min(100, pct)}%"></span></div>` +
-          `<p class="muted">Similarity: <strong>${pct.toFixed(1)}%</strong></p>` +
+          `<p class="muted">Similarity: <strong>${pct.toFixed(1)}%</strong>${voteCaption}</p>` +
           `<p><strong>Original Description:</strong><br>${escapeHtml(match.description || "(empty)")}</p>` +
           `<p><strong>Historical Resolution:</strong><br>${escapeHtml(match.resolution || "No resolution text stored.")}</p>`;
         similar.appendChild(card);
@@ -328,6 +366,8 @@
       const result = await ResolvixAPI.resolve(payload);
       state.feedback = null;
       $("feedback-msg").textContent = "";
+      $("btn-up").disabled = false;
+      $("btn-down").disabled = false;
       state.chatHistory = [
         ...(refine ? payload.chat_history || [] : []),
         { role: "user", content: clean },
@@ -609,6 +649,9 @@
       show($("result-panel"), false);
       show($("result-empty"), true);
       $("btn-refine").disabled = true;
+      $("btn-up").disabled = false;
+      $("btn-down").disabled = false;
+      $("feedback-msg").textContent = "";
       renderChatHistory();
       setError("");
     });
@@ -656,14 +699,45 @@
       }
     });
 
-    $("btn-up").addEventListener("click", () => {
-      state.feedback = "up";
-      $("feedback-msg").textContent = "Thanks — feedback recorded.";
-    });
-    $("btn-down").addEventListener("click", () => {
-      state.feedback = "down";
-      $("feedback-msg").textContent = "Thanks — we'll use this to improve grounding.";
-    });
+    async function sendFeedback(vote) {
+      if (!state.lastResult) {
+        $("feedback-msg").textContent = "Resolve a ticket before sending feedback.";
+        return;
+      }
+      state.feedback = vote;
+      $("feedback-msg").textContent = "Saving feedback…";
+      $("btn-up").disabled = true;
+      $("btn-down").disabled = true;
+      try {
+        const ids =
+          state.lastResult.similar_ticket_ids ||
+          (state.lastResult.similar_tickets || [])
+            .map((t) => t.ticket_id)
+            .filter((x) => x != null);
+        const resp = await ResolvixAPI.submitFeedback({
+          vote,
+          query:
+            state.lastResult.query ||
+            state.originalQuery ||
+            $("query-text").value,
+          resolution: resolutionBody(state.lastResult),
+          similar_ticket_ids: ids,
+          category: state.lastResult.category,
+          priority: state.lastResult.priority,
+          search_backend: state.lastResult.search_backend,
+          source: clientSource(),
+        });
+        $("feedback-msg").textContent = resp.message || "Feedback recorded.";
+        refreshFeedbackStats();
+      } catch (err) {
+        $("feedback-msg").textContent = err.message;
+        $("btn-up").disabled = false;
+        $("btn-down").disabled = false;
+      }
+    }
+
+    $("btn-up").addEventListener("click", () => sendFeedback("up"));
+    $("btn-down").addEventListener("click", () => sendFeedback("down"));
 
     $("btn-file-ticket").addEventListener("click", async () => {
       if (!state.lastResult) return;
